@@ -69,7 +69,6 @@
     function joinRoom() {
       const code = prompt("Enter room code:");
       if (!code) return;
-      code = code.toUpperCase()
       const path = `/${code}/initialized`;
       read(path).then(exists => {
         if (exists !== null) {
