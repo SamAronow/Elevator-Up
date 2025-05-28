@@ -49,7 +49,7 @@
   <script>
     let roomCode = null;
 
-    function randomCode(length = 5) {
+    function randomCode(length = 4) {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
       return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     }
@@ -69,7 +69,7 @@
     function joinRoom() {
       const code = prompt("Enter room code:");
       if (!code) return;
-
+      code = code.toUpperCase()
       const path = `/${code}/initialized`;
       read(path).then(exists => {
         if (exists !== null) {
