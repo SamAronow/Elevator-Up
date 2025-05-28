@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Initialize Game</title>
+  <title>Elevator Up</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="database.js"></script>
@@ -91,25 +91,97 @@
         return false; // Default to false for now
     }
 
+    let flashInterval;
+    let flashing = false;
 
-    function updateHandButtons(enabled, lastVal,deck,hand) {
+    function startFlashingTitle(message) {
+    if (flashing) return; // prevent multiple intervals
+    flashing = true;
+
+    let showingMessage = false;
+    flashInterval = setInterval(() => {
+        document.title = showingMessage ? "Pay Attention" : message;
+        showingMessage = !showingMessage;
+    }, 1000); // toggle every second
+    }
+
+    function stopFlashingTitle() {
+        clearInterval(flashInterval);
+        var isMyTurn = turn === Number(player);
+        document.title = isMyTurn ? "Your turn" : "Opponent Turn"
+        flashing = false;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Tab became active
+    stopFlashingTitle();
+  }
+});
+
+function winner(win) {
+    const message = win == player ? "You won!" : "Opponent won!";
+    
+    const winpopup = document.createElement("div");
+    winpopup.style.position = "fixed";
+    winpopup.style.top = "0";
+    winpopup.style.left = "0";
+    winpopup.style.width = "100vw";
+    winpopup.style.height = "100vh";
+    winpopup.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+    winpopup.style.display = "flex";
+    winpopup.style.justifyContent = "center";
+    winpopup.style.alignItems = "center";
+    winpopup.style.zIndex = "10000";
+
+    const winMessageBox = document.createElement("div");
+    winMessageBox.style.background = "#fff";
+    winMessageBox.style.padding = "30px";
+    winMessageBox.style.borderRadius = "10px";
+    winMessageBox.style.fontSize = "24px";
+    winMessageBox.textContent = message;
+
+    winpopup.appendChild(winMessageBox);
+    document.body.appendChild(winpopup);
+}
+
+
+
+
+
+
+
+
+    function updateHandButtons(enabled, lastVal,deck,hand,ends) {
         let canPlay = false;
 
     const handButtons = document.querySelectorAll("#hand .card-button");
     const endCards = document.querySelectorAll(".end-card");
-    handButtons.forEach(btn => {
-        const card = btn.dataset.card;
-        const isLegal = legalMove(card, lastVal);
-        if (enabled && isLegal) {
-            canPlay = true;
-        }
-        btn.disabled = !(enabled && isLegal);
-        btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
-        btn.onclick = (enabled && isLegal) ? () => processClick(card,false) : null;
-    });
+    const mystCards = document.querySelectorAll(".myst-card");
 
-
-    if (hand.length === 0 && deck.length === 0) {
+    if (hand.length != 0){
+        handButtons.forEach(btn => {
+            const card = btn.dataset.card;
+            const isLegal = legalMove(card, lastVal);
+            if (enabled && isLegal) {
+                canPlay = true;
+            }
+            btn.disabled = !(enabled && isLegal);
+            btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
+            btn.onclick = (enabled && isLegal) ? () => processClick(card,0) : null;
+        });
+        endCards.forEach(btn => {
+            btn.disabled = true;
+            btn.style.backgroundColor = "#ccc";
+            btn.onclick = null;
+        });
+        mystCards.forEach(btn => {
+            btn.disabled = true;
+            btn.style.backgroundColor = "#ccc";
+            btn.onclick = null;
+        });
+    }
+    else if (ends.length!=0){
         endCards.forEach(btn => {
             let card = btn.dataset.card;
             let isLegal = legalMove(card, lastVal);
@@ -118,14 +190,21 @@
             }
             btn.disabled = !(enabled && isLegal);
             btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
-            btn.onclick = (enabled && isLegal) ? () => processClick(card,true) : null;
+            btn.onclick = (enabled && isLegal) ? () => processClick(card,1) : null;
         });
-    }
-    else{
-        endCards.forEach(btn => {
+        mystCards.forEach(btn => {
             btn.disabled = true;
             btn.style.backgroundColor = "#ccc";
             btn.onclick = null;
+        });
+    }
+    else{
+        mystCards.forEach(btn => {
+            card = btn.dataset.card;
+            canPlay = true;
+            btn.disabled = !(enabled);
+            btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
+            btn.onclick = enabled ? () => processClick(card,2) : null;
         });
     }
 
@@ -134,7 +213,8 @@
         const takeBtn = document.createElement("button");
         takeBtn.id = "take-cards-btn";
         takeBtn.textContent = "Take Cards";
-        takeBtn.onclick = takeCards;
+        takeBtn.onclick = () => takeCards(null);
+
 
         const handSection = document.getElementById("hand");
         handSection.appendChild(takeBtn);
@@ -253,12 +333,92 @@
                 turnRef.on('value', async (snapshot) => {
                     updateGame()
                 });
+                
+                var mystRef = database.ref('/mysteryPlayed');
+                mystRef.on('value', async (snapshot) => {
+
+                    
+                    let turn = await read("/turn");
+                    let lastVal = await read("/lastVal");
+
+                    var isMyTurn = turn === Number(player);
+                    var card = snapshot.val();
+                    if (!card) return;
+
+                    let isLegal = legalMove(card, lastVal);
+
+                    // Remove any existing popup
+                    const oldPopup = document.getElementById("popup");
+                    if (oldPopup) oldPopup.remove();
+
+                    const popup = document.createElement("div");
+                    popup.id = "popup";
+                    popup.style.position = "fixed";
+                    popup.style.top = "0";
+                    popup.style.left = "0";
+                    popup.style.width = "100vw";
+                    popup.style.height = "100vh";
+                    popup.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                    popup.style.display = "flex";
+                    popup.style.justifyContent = "center";
+                    popup.style.alignItems = "center";
+                    popup.style.zIndex = "1000";
+
+                    const messageBox = document.createElement("div");
+                    messageBox.style.background = "#fff";
+                    messageBox.style.padding = "30px";
+                    messageBox.style.borderRadius = "8px";
+                    messageBox.style.textAlign = "center";
+                    messageBox.style.fontSize = "20px";
+
+                    const whoPlayed = isMyTurn ? "Your" : "Opponent's";
+
+                    messageBox.innerHTML = `
+                        ${whoPlayed} card played was <strong>${card}</strong><br>
+                        It is <strong style="color:${isLegal ? 'green' : 'red'}">${isLegal ? 'legal' : 'not legal'}</strong>
+                    `;
+
+                    popup.appendChild(messageBox);
+                    document.body.appendChild(popup);
+
+                    setTimeout(() => {
+                    if (isMyTurn) {
+                        const actionContainer = document.createElement("div");
+                        actionContainer.style.marginTop = "20px";
+
+                        if (isLegal) {
+                            const playBtn = document.createElement("button");
+                            playBtn.textContent = "Play Card";
+                            playBtn.onclick = () => {
+                                popup.remove();
+                                endTurn(card,1,2)
+                            };
+                            actionContainer.appendChild(playBtn);
+                        } else {
+                            const takeBtn = document.createElement("button");
+                            takeBtn.textContent = "Take Cards";
+                            takeBtn.onclick = () => {
+                                popup.remove();
+                                takeCards(card);
+                            };
+                            actionContainer.appendChild(takeBtn);
+                        }
+
+                        messageBox.appendChild(actionContainer);
+                    } else {
+                        messageBox.innerHTML += `<br><br>Waiting for opponent to ${isLegal ? "play" : "take cards"}.`;
+                    }
+                }, 1200);
+
+
+                });
+
                 updateGame();
                 return;
             }
 
             var baseDeck = ["D", "P"];
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 4; i++) {
                 for (let j = 2; j <= 10; j++) baseDeck.push(j.toString());
                     baseDeck.push("L", "N", "S");
                    // baseDeck.push("L", "S");
@@ -281,7 +441,7 @@
                 write('/ends/2', []),
                 write('/inPlay', []),
                 write('/turn', 1),
-                write('/beggining', true),
+                write('/mysteryPlayed', false),
                 write('/tookCards', false),
                 write('/lastMove', null),
                 write('/lastVal', null),
@@ -300,21 +460,27 @@
     }
 
    
-    function processClick(card,end) {
-        let count=0
-        if (end){
-            count = Array.from(document.querySelectorAll(".end-card"))
-                   .filter(btn => btn.dataset.card === card).length;
+    async function processClick(card,stage) {
+        if (stage==2){
+            await write('/mysteryPlayed',card)
+            return
         }
-        else{
+
+        let count=0
+        if (stage==0){
             count = Array.from(document.querySelectorAll("#hand .card-button"))
                    .filter(btn => btn.dataset.card === card).length;
         }
-        console.log(count)
+        if (stage==1){
+            count = Array.from(document.querySelectorAll(".end-card"))
+                   .filter(btn => btn.dataset.card === card).length;
+        }
+
+
 
 
   if (count === 1 || card=='L' || card=='S' || card=='N') {
-    endTurn(card, 1,end);
+    endTurn(card, 1,stage);
     return;
   }
 
@@ -348,7 +514,7 @@
     btn.onclick = () => {
       document.body.removeChild(overlay);
       document.body.removeChild(popup);
-      endTurn(card, i,end);
+      endTurn(card, i,stage);
     };
     popup.appendChild(btn);
   }
@@ -360,11 +526,12 @@
 
 
 
-  async function endTurn(card,amt,end) {   
-    var [deck,hand,end_cards,lastMove,inPlay,prevAmt] = await Promise.all([
+  async function endTurn(card,amt,stage) {   
+    var [deck,hand,end_cards,myst_cards,lastMove,inPlay,prevAmt] = await Promise.all([
             read(`/deck`),
             read(`/hands/${player}`),
             read(`/ends/${player}`),
+            read(`/mysts/${player}`),
             read('/lastMove'),
             read('/inPlay'),
             read('/lastAmt')
@@ -408,7 +575,7 @@
     }
 
 
-    if (!end){
+    if (stage==0){
         if (inPlay === null) {
             inPlay = [];
         }
@@ -426,7 +593,7 @@
         await write(`/hands/${player}`, hand)
         await write(`/deck`, deck)
     }
-    if (end){
+    if (stage==1){
         if (inPlay === null) {
             inPlay = [];
         }
@@ -439,6 +606,18 @@
             end_cards.splice(end_cards.indexOf(card), 1);
         }
         await write(`/ends/${player}`, end_cards)
+    }
+    if (stage==2){
+        if (inPlay === null) {
+            inPlay = [];
+        }
+        if (myst_cards === null) {
+            myst_cards = [];
+        }
+        inPlay.push(card)
+        const index = myst_cards.indexOf(card);
+        myst_cards.splice(myst_cards.indexOf(card), 1);
+        await write(`/mysts/${player}`, myst_cards)
     }
     
     if (turn==1){
@@ -462,18 +641,28 @@
 }
 
 
-async function takeCards(){
-    var [hand,inPlay] = await Promise.all([
+async function takeCards(card){
+    var [hand,inPlay,myst_cards] = await Promise.all([
             read(`/hands/${player}`),
-            read('/inPlay')
+            read('/inPlay'),
+            read(`/mysts/${player}`)
         ]);
-
     if (inPlay === null) {
         inPlay = [];
     }
     if (hand === null) {
         hand = [];
     }
+    if (card!=null) {
+        if (myst_cards === null) {
+            myst_cards = [];
+        }
+        inPlay.push(card)
+        const index = myst_cards.indexOf(card);
+        myst_cards.splice(myst_cards.indexOf(card), 1);
+        await write(`/mysts/${player}`, myst_cards)
+    }
+    
 
     hand.push(...inPlay);
     inPlay=[]
@@ -499,7 +688,7 @@ async function takeCards(){
 
    
 async function updateGame() {
-    var [deck,inPlay,hand, opponentHand, ends, opponentEnds, mysts, lastMove, lastVal, lastAmt] = await Promise.all([
+    var [deck,inPlay,hand, opponentHand, ends, opponentEnds, mysts,opponentMysts, lastMove, lastVal, lastAmt] = await Promise.all([
         read(`/deck`),
         read(`/inPlay`),
         read(`/hands/${player}`),
@@ -507,10 +696,13 @@ async function updateGame() {
         read(`/ends/${player}`),
         read(`/ends/${opponent}`),
         read(`/mysts/${player}`),
+        read(`/mysts/${opponent}`),
         read('/lastMove'),
         read('/lastVal'),
         read('/lastAmt'),
     ]);
+
+
 
     if (inPlay === null) inPlay = [];
     if (deck === null)  deck = [];
@@ -519,6 +711,8 @@ async function updateGame() {
     if (opponentEnds === null) opponentEnds = [];
     if (ends === null) ends = [];
     if (mysts === null) mysts = []
+    if (opponentMysts === null) opponentMysts=[]
+
 
     deck_len=deck.length
     play_len=inPlay.length
@@ -526,12 +720,21 @@ async function updateGame() {
 
 
     turn = await read('/turn');
+    
     hand = sortCards(hand);
 
 
     hand = sortCards(hand);
 
     var isMyTurn = turn === Number(player);
+
+    document.title = isMyTurn ? "Your turn" : "Opponent Turn"
+
+    const isTabActive = document.visibilityState === 'visible';
+    if (!isTabActive) {
+        startFlashingTitle("Your Turn!");
+    }
+
 
     let lastMoveText = "Last played: None";
     if (lastMove != null) {
@@ -543,8 +746,8 @@ async function updateGame() {
         <div class="section">
             <h2>Opponent</h2>
             <div class="cards">Hand: ${"X ".repeat(opponentHand.length).trim()}</div>
-            <div class="cards">Ends: ${opponentEnds.join(" ")}</div>
-            <div class="cards">Mystery: X X X</div>
+            <div class="cards">Ends: ${opponentEnds.join(" ")}</div> 
+            <div class="cards">Mystery: ${"X ".repeat(opponentMysts.length).trim()}</div>
         </div>
 
         <hr>
@@ -571,9 +774,12 @@ async function updateGame() {
         `<button class="card-button end-card" data-card="${card}">${card}</button>`
     ).join(" ")}
 </div>
-
-
-            <div class="cards">Mystery: X X X</div>
+            <div class="cards" id="ends">
+                <p>Mystery </p>
+    ${mysts.map(card =>
+        `<button class="card-button myst-card" data-card="${card}">X</button>`
+    ).join(" ")}
+</div>
         </div>
 
         <div class="section">
@@ -583,7 +789,14 @@ async function updateGame() {
 
 
     // Normal hand interaction
-    canPlay = updateHandButtons(isMyTurn, lastVal,deck,hand);
+    canPlay = updateHandButtons(isMyTurn, lastVal,deck,hand,ends);
+
+    if (hand.length==0 && ends.length==0 && mysts.length==0){
+        winner(player)
+    }
+    if (opponentHand.length==0 && opponentEnds.length==0 && opponentMysts.length==0){
+        winner(opponent)
+    }
 }
 
 
