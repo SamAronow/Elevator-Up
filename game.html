@@ -346,9 +346,13 @@ function winner(win) {
                     let lastVal = await read(`/${code}/lastVal`);
 
                     var isMyTurn = turn === Number(player);
-                    var card = snapshot.val();
+
+                    let data = snapshot.val();
+                    if (!data || !data.card) return;
+
+                    let card = data.card;
+                    let version = data.version;
                     console.log("card: ",card)
-                    if (!card) return;
 
                     let isLegal = legalMove(card, lastVal);
 
@@ -539,12 +543,7 @@ function winner(win) {
             read(`/${code}/inPlay`),
             read(`/${code}/lastAmt`),
     ]);
-/*
-    console.log("turn",turn)
-    console.log("lastMove",lastMove)
-    console.log("prevAmt",prevAmt)
-    console.log("amt",amt)
-    console.log("\n")*/
+
 
     if (card == 'N') {
         write(`/${code}/lastMove`, 'N');
