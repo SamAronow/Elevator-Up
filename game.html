@@ -342,13 +342,12 @@ function winner(win) {
                 
                 var mystRef = database.ref(`/${code}/mysteryPlayed`);
                 mystRef.on('value', async (snapshot) => {
-
-                    
                     let turn = await read(`/${code}/turn`);
                     let lastVal = await read(`/${code}/lastVal`);
 
                     var isMyTurn = turn === Number(player);
                     var card = snapshot.val();
+                    console.log("card: ",card)
                     if (!card) return;
 
                     let isLegal = legalMove(card, lastVal);
@@ -448,7 +447,6 @@ function winner(win) {
                 write(`/${code}/inPlay`, []),
                 write(`/${code}/turn`, 1),
                 write(`/${code}/mysteryPlayed`, false),
-                write(`/${code}/tookCards`, false),
                 write(`/${code}/lastMove`, null),
                 write(`/${code}/lastVal`, null),
                 write(`/${code}/lastAmt`, null),
