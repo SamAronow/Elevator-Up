@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Choose Player</title>
+  <title>Room Select</title>
   <style>
     button {
       padding: 10px 20px;
@@ -15,19 +15,91 @@
       color: white;
       cursor: not-allowed;
     }
+
+    #player-select {
+      display: none;
+    }
+
+    #room-code-display {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <h1>Select a Player</h1>
-  <button id="player1-btn" onclick="selectPlayer(1)">Player 1</button>
-  <button id="player2-btn" onclick="selectPlayer(2)">Player 2</button>
+  <h1>Multiplayer Game</h1>
+
+  <div id="room-code-display"></div>
+
+  <div id="room-select">
+    <button onclick="createRoom()">Create Room</button>
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
+
+  <div id="player-select">
+    <h2>Select a Player</h2>
+    <button id="player1-btn" onclick="selectPlayer(1)">Player 1</button>
+    <button id="player2-btn" onclick="selectPlayer(2)">Player 2</button>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="database.js"></script>
-  <script src="junk.js"></script>
-
   <script>
+    let roomCode = null;
+
+    function randomCode(length = 5) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
+    async function createRoom() {
+      roomCode = randomCode();
+      await Promise.all([
+        write(`/${roomCode}/Player1/Used`, false),
+        write(`/${roomCode}/Player2/Used`, false),
+        write(`/${roomCode}/initialized`, false)
+      ]);
+
+      showRoomCode();
+      showPlayerButtons();
+    }
+
+    function joinRoom() {
+      const code = prompt("Enter room code:");
+      if (!code) return;
+
+      const path = `/${code}/initialized`;
+      read(path).then(exists => {
+        if (exists !== null) {
+          roomCode = code;
+          showRoomCode();
+          showPlayerButtons();
+        } else {
+          alert("Room not found!");
+        }
+      });
+    }
+
+    function showRoomCode() {
+      const display = document.getElementById("room-code-display");
+      display.textContent = `Room Code: ${roomCode}`;
+    }
+
+    function showPlayerButtons() {
+      document.getElementById("room-select").style.display = "none";
+      document.getElementById("player-select").style.display = "block";
+
+      // Setup listeners for disabling buttons
+      firebase.database().ref(`${roomCode}/Player1/Used`).on("value", snapshot => {
+        if (snapshot.val() === true) disableButton(1);
+      });
+
+      firebase.database().ref(`${roomCode}/Player2/Used`).on("value", snapshot => {
+        if (snapshot.val() === true) disableButton(2);
+      });
+    }
 
     function disableButton(playerNum) {
       const btn = document.getElementById(`player${playerNum}-btn`);
@@ -36,33 +108,16 @@
       btn.innerText = `Taken (Player ${playerNum})`;
     }
 
-    firebase.database().ref("Player1/Used").on("value", snapshot => {
-      if (snapshot.val() === true) {
-        disableButton(1);
-      }
-    });
-
-    firebase.database().ref("Player2/Used").on("value", snapshot => {
-      if (snapshot.val() === true) {
-        disableButton(2);
-      }
-    });
-
     function selectPlayer(num) {
-      const usedPath = `Player${num}/Used`;
-
+      const usedPath = `/${roomCode}/Player${num}/Used`;
       read(usedPath).then(isUsed => {
         if (isUsed === true) {
-          alert(`Player ${num} has already joined!`);
-          return;
+          alert(`Player ${num} already joined!`);
+        } else {
+          write(usedPath, true).then(() => {
+            window.location.href = `game.html?player=${num}&room=${roomCode}`;
+          });
         }
-
-        // Mark player as used and go to game page
-        write(usedPath, true).then(() => {
-          window.location.href = `game.html?player=${num}`;
-        }).catch(error => {
-          console.error("Write failed:", error);
-        });
       });
     }
   </script>

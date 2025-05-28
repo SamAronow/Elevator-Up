@@ -25,6 +25,7 @@
   <script>
     var turn=1
     var player = getPlayerFromURL();
+    var code = getCodeFromURL();
     if (player==1){
         var opponent=2
     }
@@ -35,6 +36,11 @@
     function getPlayerFromURL() {
       var params = new URLSearchParams(window.location.search);
       return params.get("player"); // "player1" or "player2"
+    }
+
+    function getCodeFromURL() {
+      var params = new URLSearchParams(window.location.search);
+      return params.get("room"); // "player1" or "player2"
     }
 
     function shuffle(array) {
@@ -228,7 +234,7 @@ function winner(win) {
 
     window.onload = initializeGame;
 
-    var initRef = database.ref('/initialized');
+    var initRef = database.ref(`/${code}/initialized`);
     initRef.on('value', async (snapshot) => {
         var inval = snapshot.val();
         if (inval === true) {
@@ -243,7 +249,7 @@ function winner(win) {
         const player = getPlayerFromURL();
         const opponent = player === "1" ? "2" : "1";
 
-        const hand = await read(`/hands/${player}`);
+        const hand = await read(`/${code}/hands/${player}`);
         let selected = [];
 
         const popup = document.createElement("div");
@@ -296,13 +302,13 @@ function winner(win) {
             const ends = [hand[selected[0]], hand[selected[1]]];
             const newHand = hand.filter((_, i) => !selected.includes(i));
 
-            await write(`/hands/${player}`, newHand);
-            await write(`/ends/${player}`, ends);
+            await write(`/${code}/hands/${player}`, newHand);
+            await write(`/${code}/ends/${player}`, ends);
 
             waitMessage.textContent = "Waiting for opponent to choose...";
 
             // Set listener for opponent's ends
-            const endsRef = database.ref(`/ends/${opponent}`);
+            const endsRef = database.ref(`/${code}/ends/${opponent}`);
             endsRef.on('value', (snapshot) => {
                 const opponentEnds = snapshot.val();
                 if (Array.isArray(opponentEnds) && opponentEnds.length === 2) {
@@ -321,25 +327,25 @@ function winner(win) {
 
     async function initializeGame() {
         var [p1Used, p2Used] = await Promise.all([
-            read('/Player1/Used'),
-            read('/Player2/Used')
+            read(`/${code}/Player1/Used`),
+            read(`/${code}/Player2/Used`)
         ]);
 
         if (p1Used && p2Used) {
-            var alreadyInit = await read('/initialized');
+            var alreadyInit = await read(`/${code}/initialized`);
             if (alreadyInit === true) {
                 await getEnd(); 
-                var turnRef = database.ref('/turn');
+                var turnRef = database.ref(`/${code}/turn`);
                 turnRef.on('value', async (snapshot) => {
                     updateGame()
                 });
                 
-                var mystRef = database.ref('/mysteryPlayed');
+                var mystRef = database.ref(`/${code}/mysteryPlayed`);
                 mystRef.on('value', async (snapshot) => {
 
                     
-                    let turn = await read("/turn");
-                    let lastVal = await read("/lastVal");
+                    let turn = await read(`/${code}/turn`);
+                    let lastVal = await read(`/${code}/lastVal`);
 
                     var isMyTurn = turn === Number(player);
                     var card = snapshot.val();
@@ -432,27 +438,26 @@ function winner(win) {
             var hand2 = deal(baseDeck, 5);
 
             await Promise.all([
-                write('/deck', baseDeck),
-                write('/mysts/1', myst1),
-                write('/mysts/2', myst2),
-                write('/hands/1', hand1),
-                write('/hands/2', hand2),
-                write('/ends/1', []),
-                write('/ends/2', []),
-                write('/inPlay', []),
-                write('/turn', 1),
-                write('/mysteryPlayed', false),
-                write('/tookCards', false),
-                write('/lastMove', null),
-                write('/lastVal', null),
-                write('/lastAmt', null),
-                write('/lastNum', null),
-                write('/lastDiscard', null),
-                write('/lastVal', null),
+                write(`/${code}/deck`, baseDeck),
+                write(`/${code}/mysts/1`, myst1),
+                write(`/${code}/mysts/2`, myst2),
+                write(`/${code}/hands/1`, hand1),
+                write(`/${code}/hands/2`, hand2),
+                write(`/${code}/ends/1`, []),
+                write(`/${code}/ends/2`, []),
+                write(`/${code}/inPlay`, []),
+                write(`/${code}/turn`, 1),
+                write(`/${code}/mysteryPlayed`, false),
+                write(`/${code}/tookCards`, false),
+                write(`/${code}/lastMove`, null),
+                write(`/${code}/lastVal`, null),
+                write(`/${code}/lastAmt`, null),
+                write(`/${code}/lastNum`, null),
+                write(`/${code}/lastDiscard`, null),
             ]);
 
+            await write(`/${code}/initialized`, true);
 
-            await write('/initialized', true)
         }
         else {
             console.log("Waiting for both players...");
@@ -462,7 +467,7 @@ function winner(win) {
    
     async function processClick(card,stage) {
         if (stage==2){
-            await write('/mysteryPlayed',card)
+            await write(`/${code}/mysteryPlayed`,card)
             return
         }
 
@@ -528,13 +533,13 @@ function winner(win) {
 
   async function endTurn(card,amt,stage) {   
     var [deck,hand,end_cards,myst_cards,lastMove,inPlay,prevAmt] = await Promise.all([
-            read(`/deck`),
-            read(`/hands/${player}`),
-            read(`/ends/${player}`),
-            read(`/mysts/${player}`),
-            read('/lastMove'),
-            read('/inPlay'),
-            read('/lastAmt')
+            read(`/${code}/deck`),
+            read(`/${code}/hands/${player}`),
+            read(`/${code}/ends/${player}`),
+            read(`/${code}/mysts/${player}`),
+            read(`/${code}/lastMove`),
+            read(`/${code}/inPlay`),
+            read(`/${code}/lastAmt`),
     ]);
 /*
     console.log("turn",turn)
@@ -543,36 +548,34 @@ function winner(win) {
     console.log("amt",amt)
     console.log("\n")*/
 
-    if (card=='N'){
-        write('/lastMove','N')
-        write('/lastVal',null)
-        write('/lastAmt',1)
+    if (card == 'N') {
+        write(`/${code}/lastMove`, 'N');
+        write(`/${code}/lastVal`, null);
+        write(`/${code}/lastAmt`, 1);
+    } 
+    else if (!isNaN(parseInt(card)) && (amt == 4 || ((amt + prevAmt) % 4 == 0 && card == lastMove))) {
+        write(`/${code}/lastMove`, 'New from 4 of ' + card);
+        write(`/${code}/lastVal`, null);
+        write(`/${code}/lastAmt`, 4);
+    } 
+    else if (card == 'D' || card == 'S') {
+        write(`/${code}/lastMove`, card);
+        if (card == lastMove) {
+            write(`/${code}/lastAmt`, amt + prevAmt);
+        } else {
+            write(`/${code}/lastAmt`, amt);
+        }
+    } 
+    else {
+        write(`/${code}/lastMove`, card);
+        write(`/${code}/lastVal`, card);
+        if (card == lastMove) {
+            write(`/${code}/lastAmt`, amt + prevAmt);
+        } else {
+            write(`/${code}/lastAmt`, amt);
+        }
     }
-    else if (!isNaN(parseInt(card)) && (amt==4 || ((amt+prevAmt)%4==0 && card==lastMove))){
-        write('/lastMove','New from 4 of '+card)
-        write('/lastVal',null)
-        write('/lastAmt',4)
 
-    }
-    else if (card=='D' || card=='S'){
-        write('/lastMove',card)
-        if (card==lastMove){
-            write('/lastAmt',amt+prevAmt)
-        }
-        else{
-            write('/lastAmt',amt)
-        }
-    }
-    else{
-        write('/lastMove',card)
-        write('/lastVal',card)
-        if (card==lastMove){
-            write('/lastAmt',amt+prevAmt)
-        }
-        else{
-            write('/lastAmt',amt)
-        }
-    }
 
 
     if (stage==0){
@@ -590,8 +593,8 @@ function winner(win) {
                 hand.push(deal(deck,1)[0])
             }
         }
-        await write(`/hands/${player}`, hand)
-        await write(`/deck`, deck)
+        await write(`/${code}/hands/${player}`, hand)
+        await write(`/${code}/deck`, deck)
     }
     if (stage==1){
         if (inPlay === null) {
@@ -605,7 +608,7 @@ function winner(win) {
             const index = end_cards.indexOf(card);
             end_cards.splice(end_cards.indexOf(card), 1);
         }
-        await write(`/ends/${player}`, end_cards)
+        await write(`/${code}/ends/${player}`, end_cards)
     }
     if (stage==2){
         if (inPlay === null) {
@@ -617,7 +620,7 @@ function winner(win) {
         inPlay.push(card)
         const index = myst_cards.indexOf(card);
         myst_cards.splice(myst_cards.indexOf(card), 1);
-        await write(`/mysts/${player}`, myst_cards)
+        await write(`/${code}/mysts/${player}`, myst_cards)
     }
     
     if (turn==1){
@@ -627,25 +630,25 @@ function winner(win) {
         newTurn=1
     }
     if (card =='N' || (!isNaN(parseInt(card)) && (amt==4 || ((amt+prevAmt)%4==0 && card==lastMove)))){
-        write('/inPlay',[])
+        write(`/${code}/inPlay`,[])
     }
     else{
-        write('/inPlay',inPlay)
+        write(`/${code}/inPlay`,inPlay)
     }
 
     //swtich turns
-    write('/turn',newTurn)
+    write(`/${code}/turn`,newTurn)
     if (card =='N' || card =='D' || (!isNaN(parseInt(card)) && (amt==4 || ((amt+prevAmt)%4==0 && card==lastMove)))){
-        write('/turn',turn)   
+        write(`/${code}/turn`,turn)   
     }
 }
 
 
 async function takeCards(card){
     var [hand,inPlay,myst_cards] = await Promise.all([
-            read(`/hands/${player}`),
-            read('/inPlay'),
-            read(`/mysts/${player}`)
+            read(`/${code}/hands/${player}`),
+            read(`/${code}/inPlay`),
+            read(`/${code}/mysts/${player}`)
         ]);
     if (inPlay === null) {
         inPlay = [];
@@ -660,7 +663,7 @@ async function takeCards(card){
         inPlay.push(card)
         const index = myst_cards.indexOf(card);
         myst_cards.splice(myst_cards.indexOf(card), 1);
-        await write(`/mysts/${player}`, myst_cards)
+        await write(`/${code}/mysts/${player}`, myst_cards)
     }
     
 
@@ -674,13 +677,14 @@ async function takeCards(card){
         newTurn=1
     }
 
+    write(`/${code}/lastMove`, null);
+    write(`/${code}/lastVal`, null);
+    write(`/${code}/lastAmt`, null);
 
-    write('/lastMove', null),
-    write('/lastVal', null),
-    write('/lastAmt', null),
-    await write('/inPlay',inPlay)
-    await write(`/hands/${player}`,hand)
-    await write(`/turn`,newTurn)
+    await write(`/${code}/inPlay`, inPlay);
+    await write(`/${code}/hands/${player}`, hand);
+    await write(`/${code}/turn`, newTurn);
+
 
 }
 
@@ -689,18 +693,19 @@ async function takeCards(card){
    
 async function updateGame() {
     var [deck,inPlay,hand, opponentHand, ends, opponentEnds, mysts,opponentMysts, lastMove, lastVal, lastAmt] = await Promise.all([
-        read(`/deck`),
-        read(`/inPlay`),
-        read(`/hands/${player}`),
-        read(`/hands/${opponent}`),
-        read(`/ends/${player}`),
-        read(`/ends/${opponent}`),
-        read(`/mysts/${player}`),
-        read(`/mysts/${opponent}`),
-        read('/lastMove'),
-        read('/lastVal'),
-        read('/lastAmt'),
+        read(`/${code}/deck`),
+        read(`/${code}/inPlay`),
+        read(`/${code}/hands/${player}`),
+        read(`/${code}/hands/${opponent}`),
+        read(`/${code}/ends/${player}`),
+        read(`/${code}/ends/${opponent}`),
+        read(`/${code}/mysts/${player}`),
+        read(`/${code}/mysts/${opponent}`),
+        read(`/${code}/lastMove`),
+        read(`/${code}/lastVal`),
+        read(`/${code}/lastAmt`)
     ]);
+
 
 
 
@@ -719,7 +724,7 @@ async function updateGame() {
 
 
 
-    turn = await read('/turn');
+    turn = await read(`/${code}/turn`);
     
     hand = sortCards(hand);
 
