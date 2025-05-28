@@ -469,7 +469,11 @@ function winner(win) {
    
     async function processClick(card,stage) {
         if (stage==2){
-            await write(`/${code}/mysteryPlayed`,card)
+            await write(`/${code}/mysteryPlayed`, {
+                card: card,
+                version: Date.now()  // or some turn counter
+            });
+
             return
         }
 
