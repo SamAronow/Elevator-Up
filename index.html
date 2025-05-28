@@ -68,8 +68,10 @@
     console.log(Date.now())
 
     function joinRoom() {
-      const code = prompt("Enter room code:");
+      let code = prompt("Enter room code:");
       if (!code) return;
+      code = code.toUpperCase()
+      console.log(code)
       const path = `/${code}/initialized`;
       read(path).then(exists => {
         if (exists !== null) {
