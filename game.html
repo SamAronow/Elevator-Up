@@ -125,6 +125,8 @@
   }
 });
 
+
+
 function winner(win) {
     const message = win == player ? "You won!" : "Opponent won!";
     
@@ -348,10 +350,9 @@ function winner(win) {
                     var isMyTurn = turn === Number(player);
 
                     let data = snapshot.val();
-                    if (!data || !data.card) return;
+                    if (!data || !data.played) return;
 
-                    let card = data.card;
-                    let version = data.version;
+                    let card = data.played;
                     console.log("card: ",card)
 
                     let isLegal = legalMove(card, lastVal);
@@ -469,9 +470,10 @@ function winner(win) {
    
     async function processClick(card,stage) {
         if (stage==2){
+            console.log("hi")
             await write(`/${code}/mysteryPlayed`, {
-                card: card,
-                version: Date.now()  // or some turn counter
+                played: card,
+                date: Date.now()  // or some turn counter
             });
 
             return
