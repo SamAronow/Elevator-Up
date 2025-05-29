@@ -124,38 +124,179 @@
     stopFlashingTitle();
   }
 });
+let opp_play_again = false;
+let opp_delete_game = false;
+let play_again = false;
+let delete_game = false;
+let playAgainBtn, deleteBtn; 
 
-
-
-function winner(win) {
+async function winner(win) {
     const message = win == player ? "You won!" : "Opponent won!";
-    
+
     const winpopup = document.createElement("div");
-    winpopup.style.position = "fixed";
-    winpopup.style.top = "0";
-    winpopup.style.left = "0";
-    winpopup.style.width = "100vw";
-    winpopup.style.height = "100vh";
-    winpopup.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-    winpopup.style.display = "flex";
-    winpopup.style.justifyContent = "center";
-    winpopup.style.alignItems = "center";
-    winpopup.style.zIndex = "10000";
+    Object.assign(winpopup.style, {
+        position: "fixed", top: "0", left: "0",
+        width: "100vw", height: "100vh",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        display: "flex", flexDirection: "column",
+        justifyContent: "center", alignItems: "center",
+        zIndex: "10000"
+    });
 
     const winMessageBox = document.createElement("div");
-    winMessageBox.style.background = "#fff";
-    winMessageBox.style.padding = "30px";
-    winMessageBox.style.borderRadius = "10px";
-    winMessageBox.style.fontSize = "24px";
-    winMessageBox.textContent = message;
+    Object.assign(winMessageBox.style, {
+        background: "#fff", padding: "30px",
+        borderRadius: "10px", fontSize: "24px",
+        textAlign: "center", display: "flex",
+        flexDirection: "column", alignItems: "center"
+    });
 
+    const messageText = document.createElement("div");
+    messageText.textContent = message;
+
+    const buttonContainer = document.createElement("div");
+    Object.assign(buttonContainer.style, {
+        display: "flex", flexDirection: "column",
+        marginTop: "20px", gap: "10px"
+    });
+
+      playAgainBtn = document.createElement("button");
+    playAgainBtn.textContent = "Play Again";
+    Object.assign(playAgainBtn.style, {
+        padding: "10px 20px",
+        fontSize: "18px",
+        backgroundColor: "#eee",
+        transition: "background-color 0.3s"
+    });
+    playAgainBtn.onclick = () => chooseOption("playAgain");
+
+    deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete Room";
+    Object.assign(deleteBtn.style, {
+        padding: "10px 20px",
+        fontSize: "18px",
+        backgroundColor: "#eee",
+        transition: "background-color 0.3s"
+    });
+    deleteBtn.onclick = () => chooseOption("deleteGame");
+
+    const statusMessage = document.createElement("div");
+    Object.assign(statusMessage.style, { marginTop: "15px", fontSize: "18px", color: "#333" });
+
+    buttonContainer.appendChild(playAgainBtn);
+    buttonContainer.appendChild(deleteBtn);
+    winMessageBox.appendChild(messageText);
+    winMessageBox.appendChild(buttonContainer);
+    winMessageBox.appendChild(statusMessage);
     winpopup.appendChild(winMessageBox);
     document.body.appendChild(winpopup);
+
+
+    // Listen for opponent's playAgain
+    firebase.database().ref(`/${code}/Player${opponent}/playAgain`).on('value', snapshot => {
+        opp_play_again = !!snapshot.val();
+        updateStatus();
+    });
+
+    // Listen for opponent's deleteGame
+    firebase.database().ref(`/${code}/Player${opponent}/deleteGame`).on('value', snapshot => {
+        opp_delete_game = !!snapshot.val();
+        updateStatus();
+    });
+
+    // Listen for your own playAgain
+    firebase.database().ref(`/${code}/Player${player}/playAgain`).on('value', snapshot => {
+        play_again = !!snapshot.val();
+        updateStatus();
+    });
+
+    // Listen for your own deleteGame
+    firebase.database().ref(`/${code}/Player${player}/deleteGame`).on('value', snapshot => {
+        delete_game = !!snapshot.val();
+        updateStatus();
+    });
+
+    function updateStatus() {
+        if (play_again && opp_play_again) {
+            playAgain()
+        } else if (delete_game && opp_delete_game) {
+            deleteGame()
+        } else if (opp_play_again) {
+            statusMessage.textContent = "Opponent wants to play again";
+        } else if (opp_delete_game) {
+            statusMessage.textContent = "Opponent wants to delete room";
+        } else {
+            statusMessage.textContent = "Waiting on opponent...";
+        }
+    }
+
+    let data = await read(`/${code}/Player${player}`);
+    if (data?.playAgain) {
+        chooseOption("playAgain");
+    } 
+    else if (data?.deleteGame) {
+        chooseOption("deleteGame");
+    }
 }
 
+    async function chooseOption(option) {
+        // Reset button styles
+        playAgainBtn.style.backgroundColor = "#eee";
+        deleteBtn.style.backgroundColor = "#eee";
 
+        if (option === "playAgain") {
+            play_again = true;
+            delete_game = false;
+            playAgainBtn.style.backgroundColor = "#cce5cc"; // light green highlight
+            await write(`/${code}/Player${player}/playAgain`, true);
+            await write(`/${code}/Player${player}/deleteGame`, false);
+        } else if (option === "deleteGame") {
+            delete_game = true;
+            play_again = false;
+            deleteBtn.style.backgroundColor = "#f5cccc"; // light red highlight
+            await write(`/${code}/Player${player}/playAgain`, false);
+            await write(`/${code}/Player${player}/deleteGame`, true);
+        }
+    }
 
+    async function playAgain(){
+        if (player==1){
+            await Promise.all([
+                removeNode(`/${code}/hands`),
+                removeNode(`/${code}/inPlay`),
+                removeNode(`/${code}/lastAmt`),
+                removeNode(`/${code}/lastMove`),
+                removeNode(`/${code}/lastVal`),
+                removeNode(`/${code}/mysteryPlayed`),
+                removeNode(`/${code}/mysts`),
+                removeNode(`/${code}/turn`),
+                removeNode(`/${code}/deck`),
+                removeNode(`/${code}/ends`),
+                removeNode(`/${code}/Player1/deleteGame`),
+                removeNode(`/${code}/Player1/playAgain`),
+                removeNode(`/${code}/Player2/deleteGame`),
+                removeNode(`/${code}/Player2/playAgain`),
+                write(`/${code}/gameStarted`,false),
+                write(`/${code}/initialized`,false),
+                write(`/${code}/resetDone`, true)
+            ]);
+            location.reload();
+        }
+        else {
+        firebase.database().ref(`/${code}/resetDone`).on('value', snapshot => {
+            if (snapshot.val() === true) {
+                location.reload();
+            }
+        });
+    }
+    }
 
+    async function deleteGame(){
+        if (player==1){
+            await removeNode(`/${code}`)
+        }
+        window.location.href = 'index.html';
+    }
 
 
 
@@ -328,15 +469,25 @@ function winner(win) {
 
 
     async function initializeGame() {
-        var [p1Used, p2Used] = await Promise.all([
+
+        var [p1Used, p2Used,gameStarted] = await Promise.all([
             read(`/${code}/Player1/Used`),
-            read(`/${code}/Player2/Used`)
+            read(`/${code}/Player2/Used`),
+            read(`/${code}/gameStarted`)
         ]);
+
+
 
         if (p1Used && p2Used) {
             var alreadyInit = await read(`/${code}/initialized`);
             if (alreadyInit === true) {
-                await getEnd(); 
+                if (!gameStarted){
+                    console.log("game")
+                    write(`/${code}/Player${player}/playAgain`,false)
+                    write(`/${code}/Player${player}/deleteGame`,false)
+                    await getEnd(); 
+                }
+
                 var turnRef = database.ref(`/${code}/turn`);
                 turnRef.on('value', async (snapshot) => {
                     updateGame()
@@ -421,13 +572,14 @@ function winner(win) {
 
 
                 });
+                await write(`/${code}/gameStarted`,true)
 
                 updateGame();
                 return;
             }
 
             var baseDeck = ["D", "P"];
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i <4; i++) {
                 for (let j = 2; j <= 10; j++) baseDeck.push(j.toString());
                     baseDeck.push("L", "N", "S");
                    // baseDeck.push("L", "S");
@@ -454,8 +606,7 @@ function winner(win) {
                 write(`/${code}/lastMove`, null),
                 write(`/${code}/lastVal`, null),
                 write(`/${code}/lastAmt`, null),
-                write(`/${code}/lastNum`, null),
-                write(`/${code}/lastDiscard`, null),
+                write(`/${code}/resetDone`, false)
             ]);
 
             await write(`/${code}/initialized`, true);
@@ -469,7 +620,6 @@ function winner(win) {
    
     async function processClick(card,stage) {
         if (stage==2){
-            console.log("hi")
             await write(`/${code}/mysteryPlayed`, {
                 played: card,
                 date: Date.now()  // or some turn counter

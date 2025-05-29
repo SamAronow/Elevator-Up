@@ -30,7 +30,8 @@
       await Promise.all([
         write(`/${code}/Player1/Used`, false),
         write(`/${code}/Player2/Used`, false),
-        write(`/${code}/initialized`, false)
+        write(`/${code}/initialized`, false),
+        write(`/${code}/gameStarted`,false)
       ]);
       window.location.href = `room.html?room=${code}`;
     }
