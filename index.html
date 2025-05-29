@@ -1,127 +1,91 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Room Select</title>
-  <style>
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      margin: 10px;
-      cursor: pointer;
+<script>
+  let roomCode = null;
+
+  function randomCode(length = 4) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  async function createRoom() {
+    roomCode = randomCode();
+    await Promise.all([
+      write(`/${roomCode}/Player1/Used`, false),
+      write(`/${roomCode}/Player2/Used`, false),
+      write(`/${roomCode}/initialized`, false)
+    ]);
+
+    // Add the room code to the URL
+    const newUrl = `${window.location.pathname}?room=${roomCode}`;
+    window.history.pushState({}, '', newUrl);
+
+    showRoomCode();
+    showPlayerButtons();
+  }
+
+  function joinRoom() {
+    let code = prompt("Enter room code:");
+    if (!code) return;
+    code = code.toUpperCase();
+    attemptJoin(code);
+  }
+
+  function attemptJoin(code) {
+    const path = `/${code}/initialized`;
+    read(path).then(exists => {
+      if (exists !== null) {
+        roomCode = code;
+        showRoomCode();
+        showPlayerButtons();
+      } else {
+        alert("Room not found!");
+      }
+    });
+  }
+
+  function showRoomCode() {
+    const display = document.getElementById("room-code-display");
+    display.textContent = `Room Code: ${roomCode}`;
+  }
+
+  function showPlayerButtons() {
+    document.getElementById("room-select").style.display = "none";
+    document.getElementById("player-select").style.display = "block";
+
+    firebase.database().ref(`${roomCode}/Player1/Used`).on("value", snapshot => {
+      if (snapshot.val() === true) disableButton(1);
+    });
+
+    firebase.database().ref(`${roomCode}/Player2/Used`).on("value", snapshot => {
+      if (snapshot.val() === true) disableButton(2);
+    });
+  }
+
+  function disableButton(playerNum) {
+    const btn = document.getElementById(`player${playerNum}-btn`);
+    btn.disabled = true;
+    btn.classList.add("taken");
+    btn.innerText = `Taken (Player ${playerNum})`;
+  }
+
+  function selectPlayer(num) {
+    const usedPath = `/${roomCode}/Player${num}/Used`;
+    read(usedPath).then(isUsed => {
+      if (isUsed === true) {
+        alert(`Player ${num} already joined!`);
+      } else {
+        write(usedPath, true).then(() => {
+          window.location.href = `game.html?player=${num}&room=${roomCode}`;
+        });
+      }
+    });
+  }
+
+  // 🔽 Auto-join if `room` is in the URL on page load
+  window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    const codeFromURL = params.get('room');
+    if (codeFromURL) {
+      attemptJoin(codeFromURL.toUpperCase());
     }
-
-    button.taken {
-      background-color: #555;
-      color: white;
-      cursor: not-allowed;
-    }
-
-    #player-select {
-      display: none;
-    }
-
-    #room-code-display {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
-  </style>
-</head>
-<body>
-  <h1>Multiplayer Game</h1>
-
-  <div id="room-code-display"></div>
-
-  <div id="room-select">
-    <button onclick="createRoom()">Create Room</button>
-    <button onclick="joinRoom()">Join Room</button>
-  </div>
-
-  <div id="player-select">
-    <h2>Select a Player</h2>
-    <button id="player1-btn" onclick="selectPlayer(1)">Player 1</button>
-    <button id="player2-btn" onclick="selectPlayer(2)">Player 2</button>
-  </div>
-
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="database.js"></script>
-  <script>
-    let roomCode = null;
-
-    function randomCode(length = 4) {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    }
-
-    async function createRoom() {
-      roomCode = randomCode();
-      await Promise.all([
-        write(`/${roomCode}/Player1/Used`, false),
-        write(`/${roomCode}/Player2/Used`, false),
-        write(`/${roomCode}/initialized`, false)
-      ]);
-
-      showRoomCode();
-      showPlayerButtons();
-    }
-    console.log(Date.now())
-
-    function joinRoom() {
-      let code = prompt("Enter room code:");
-      if (!code) return;
-      code = code.toUpperCase()
-      console.log(code)
-      const path = `/${code}/initialized`;
-      read(path).then(exists => {
-        if (exists !== null) {
-          roomCode = code;
-          showRoomCode();
-          showPlayerButtons();
-        } else {
-          alert("Room not found!");
-        }
-      });
-    }
-
-    function showRoomCode() {
-      const display = document.getElementById("room-code-display");
-      display.textContent = `Room Code: ${roomCode}`;
-    }
-
-    function showPlayerButtons() {
-      document.getElementById("room-select").style.display = "none";
-      document.getElementById("player-select").style.display = "block";
-
-      // Setup listeners for disabling buttons
-      firebase.database().ref(`${roomCode}/Player1/Used`).on("value", snapshot => {
-        if (snapshot.val() === true) disableButton(1);
-      });
-
-      firebase.database().ref(`${roomCode}/Player2/Used`).on("value", snapshot => {
-        if (snapshot.val() === true) disableButton(2);
-      });
-    }
-
-    function disableButton(playerNum) {
-      const btn = document.getElementById(`player${playerNum}-btn`);
-      btn.disabled = true;
-      btn.classList.add("taken");
-      btn.innerText = `Taken (Player ${playerNum})`;
-    }
-
-    function selectPlayer(num) {
-      const usedPath = `/${roomCode}/Player${num}/Used`;
-      read(usedPath).then(isUsed => {
-        if (isUsed === true) {
-          alert(`Player ${num} already joined!`);
-        } else {
-          write(usedPath, true).then(() => {
-            window.location.href = `game.html?player=${num}&room=${roomCode}`;
-          });
-        }
-      });
-    }
-  </script>
-</body>
-</html>
+  };
+</script>
