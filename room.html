@@ -15,74 +15,46 @@
       color: white;
       cursor: not-allowed;
     }
-
-    #player-select {
-      display: none;
-    }
-
-    #room-code-display {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
   </style>
 </head>
 <body>
   <h1>Room Lobby</h1>
-
   <div id="room-code-display"></div>
-  <button id="copy-link-btn" style="display:none;" onclick="copyRoomLink()">Copy Room Link</button>
-
-  <div id="player-select">
-    <h2>Select a Player</h2>
-    <button id="player1-btn" onclick="selectPlayer(1)">Player 1</button>
-    <button id="player2-btn" onclick="selectPlayer(2)">Player 2</button>
-  </div>
+  <div><button id="copy-link-btn">Copy Room Link</button></div>
+  <h2>Select a Player</h2>
+  <div id="player-buttons"></div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="database.js"></script>
   <script>
-    let roomCode = null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCode = urlParams.get("room");
 
-    window.onload = () => {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("room");
-      if (!code) {
-        alert("No room code provided.");
-        return;
-      }
-
-      roomCode = code.toUpperCase();
-      const path = `/${roomCode}/initialized`;
-      read(path).then(exists => {
-        if (exists !== null) {
-          showRoomCode();
-          showPlayerButtons();
-        } else {
-          alert("Room not found.");
-        }
-      });
+    document.getElementById("room-code-display").textContent = `Room Code: ${roomCode}`;
+    document.getElementById("copy-link-btn").onclick = () => {
+      const roomURL = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+      navigator.clipboard.writeText(roomURL).then(() => alert("Room link copied!"));
     };
 
-    function showRoomCode() {
-      const display = document.getElementById("room-code-display");
-      display.textContent = `Room Code: ${roomCode}`;
+    let playerCount = 0;
 
-      const copyBtn = document.getElementById("copy-link-btn");
-      copyBtn.style.display = "inline-block";
-    }
+    async function setupRoom() {
+      playerCount = await read(`/${roomCode}/playerCount`);
+      const container = document.getElementById("player-buttons");
+      for (let i = 1; i <= playerCount; i++) {
+        const btn = document.createElement("button");
+        btn.id = `player${i}-btn`;
+        btn.textContent = `Player ${i}`;
+        btn.onclick = () => selectPlayer(i);
+        container.appendChild(btn);
 
-    function showPlayerButtons() {
-      document.getElementById("player-select").style.display = "block";
+        firebase.database().ref(`${roomCode}/Player${i}/Used`).on("value", snapshot => {
+          if (snapshot.val() === true) disableButton(i);
+        });
+      }
 
-      firebase.database().ref(`${roomCode}/Player1/Used`).on("value", snapshot => {
-        if (snapshot.val() === true) disableButton(1);
-      });
-
-      firebase.database().ref(`${roomCode}/Player2/Used`).on("value", snapshot => {
-        if (snapshot.val() === true) disableButton(2);
-      });
+      waitForAllPlayers();
     }
 
     function disableButton(playerNum) {
@@ -105,14 +77,23 @@
       });
     }
 
-    function copyRoomLink() {
-      const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-      navigator.clipboard.writeText(url).then(() => {
-        alert("Room link copied to clipboard!");
-      }).catch(err => {
-        alert("Failed to copy the link.");
+    async function waitForAllPlayers() {
+      firebase.database().ref(`/${roomCode}`).on('value', snapshot => {
+        const data = snapshot.val();
+        let allJoined = true;
+        for (let i = 1; i <= playerCount; i++) {
+          if (!data?.[`Player${i}`]?.Used) {
+            allJoined = false;
+            break;
+          }
+        }
+        if (allJoined) {
+          console.log("All players joined!");
+        }
       });
     }
+
+    setupRoom();
   </script>
 </body>
 </html>

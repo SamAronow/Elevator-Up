@@ -9,12 +9,46 @@
       margin: 10px;
       cursor: pointer;
     }
+
+    #player-count-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    #popup-content {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    #popup-content h2 {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <h1>Multiplayer Game</h1>
-  <button onclick="createRoom()">Create Room</button>
+  <button onclick="openPlayerCountPopup()">Create Room</button>
   <button onclick="joinRoom()">Join Room</button>
+
+  <!-- Player Count Popup -->
+  <div id="player-count-popup" style="display: none;">
+    <div id="popup-content">
+      <h2>Choose number of players</h2>
+      <button onclick="createRoom(2)">2 Players</button>
+      <button onclick="createRoom(3)">3 Players</button>
+      <button onclick="createRoom(4)">4 Players</button>
+    </div>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -25,14 +59,24 @@
       return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     }
 
-    async function createRoom() {
+    function openPlayerCountPopup() {
+      document.getElementById("player-count-popup").style.display = "flex";
+    }
+
+    async function createRoom(playerCount) {
       const code = randomCode();
-      await Promise.all([
-        write(`/${code}/Player1/Used`, false),
-        write(`/${code}/Player2/Used`, false),
+
+      const writes = [
         write(`/${code}/initialized`, false),
-        write(`/${code}/gameStarted`,false)
-      ]);
+        write(`/${code}/gameStarted`, false),
+        write(`/${code}/playerCount`, playerCount)
+      ];
+
+      for (let i = 1; i <= playerCount; i++) {
+        writes.push(write(`/${code}/Player${i}/Used`, false));
+      }
+
+      await Promise.all(writes);
       window.location.href = `room.html?room=${code}`;
     }
 
