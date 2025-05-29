@@ -1,91 +1,165 @@
-<script>
-  let roomCode = null;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Elevator Up</title>
+  <style>
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+    }
 
-  function randomCode(length = 4) {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  }
+    button.taken {
+      background-color: #555;
+      color: white;
+      cursor: not-allowed;
+    }
 
-  async function createRoom() {
-    roomCode = randomCode();
-    await Promise.all([
-      write(`/${roomCode}/Player1/Used`, false),
-      write(`/${roomCode}/Player2/Used`, false),
-      write(`/${roomCode}/initialized`, false)
-    ]);
+    #player-select {
+      display: none;
+    }
 
-    // Add the room code to the URL
-    const newUrl = `${window.location.pathname}?room=${roomCode}`;
-    window.history.pushState({}, '', newUrl);
+    #room-code-display {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Multiplayer Game</h1>
 
-    showRoomCode();
-    showPlayerButtons();
-  }
+  <div id="room-code-display"></div>
+  <button id="copy-link-btn" style="display:none;" onclick="copyRoomLink()">Copy Room Link</button>
 
-  function joinRoom() {
-    let code = prompt("Enter room code:");
-    if (!code) return;
-    code = code.toUpperCase();
-    attemptJoin(code);
-  }
+  <div id="room-select">
+    <button onclick="createRoom()">Create Room</button>
+    <button onclick="joinRoom()">Join Room</button>
+  </div>
 
-  function attemptJoin(code) {
-    const path = `/${code}/initialized`;
-    read(path).then(exists => {
-      if (exists !== null) {
-        roomCode = code;
-        showRoomCode();
-        showPlayerButtons();
-      } else {
-        alert("Room not found!");
-      }
-    });
-  }
+  <div id="player-select">
+    <h2>Select a Player</h2>
+    <button id="player1-btn" onclick="selectPlayer(1)">Player 1</button>
+    <button id="player2-btn" onclick="selectPlayer(2)">Player 2</button>
+  </div>
 
-  function showRoomCode() {
-    const display = document.getElementById("room-code-display");
-    display.textContent = `Room Code: ${roomCode}`;
-  }
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="database.js"></script>
+  <script>
+    let roomCode = null;
 
-  function showPlayerButtons() {
-    document.getElementById("room-select").style.display = "none";
-    document.getElementById("player-select").style.display = "block";
+    // Generate random 4-letter room code
+    function randomCode(length = 4) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
 
-    firebase.database().ref(`${roomCode}/Player1/Used`).on("value", snapshot => {
-      if (snapshot.val() === true) disableButton(1);
-    });
+    async function createRoom() {
+      roomCode = randomCode();
+      await Promise.all([
+        write(`/${roomCode}/Player1/Used`, false),
+        write(`/${roomCode}/Player2/Used`, false),
+        write(`/${roomCode}/initialized`, false)
+      ]);
 
-    firebase.database().ref(`${roomCode}/Player2/Used`).on("value", snapshot => {
-      if (snapshot.val() === true) disableButton(2);
-    });
-  }
+      // Add code to URL
+      const url = new URL(window.location.href);
+      url.searchParams.set("room", roomCode);
+      window.history.replaceState({}, "", url);
 
-  function disableButton(playerNum) {
-    const btn = document.getElementById(`player${playerNum}-btn`);
-    btn.disabled = true;
-    btn.classList.add("taken");
-    btn.innerText = `Taken (Player ${playerNum})`;
-  }
+      showRoomCode();
+      showPlayerButtons();
+    }
 
-  function selectPlayer(num) {
-    const usedPath = `/${roomCode}/Player${num}/Used`;
-    read(usedPath).then(isUsed => {
-      if (isUsed === true) {
-        alert(`Player ${num} already joined!`);
-      } else {
-        write(usedPath, true).then(() => {
-          window.location.href = `game.html?player=${num}&room=${roomCode}`;
+    function joinRoom() {
+      let code = prompt("Enter room code:");
+      if (!code) return;
+      code = code.toUpperCase();
+      const path = `/${code}/initialized`;
+      read(path).then(exists => {
+        if (exists !== null) {
+          roomCode = code;
+          const url = new URL(window.location.href);
+          url.searchParams.set("room", roomCode);
+          window.history.replaceState({}, "", url);
+          showRoomCode();
+          showPlayerButtons();
+        } else {
+          alert("Room not found!");
+        }
+      });
+    }
+
+    function showRoomCode() {
+      const display = document.getElementById("room-code-display");
+      display.textContent = `Room Code: ${roomCode}`;
+
+      const copyBtn = document.getElementById("copy-link-btn");
+      copyBtn.style.display = "inline-block";
+    }
+
+    function showPlayerButtons() {
+      document.getElementById("room-select").style.display = "none";
+      document.getElementById("player-select").style.display = "block";
+
+      firebase.database().ref(`${roomCode}/Player1/Used`).on("value", snapshot => {
+        if (snapshot.val() === true) disableButton(1);
+      });
+
+      firebase.database().ref(`${roomCode}/Player2/Used`).on("value", snapshot => {
+        if (snapshot.val() === true) disableButton(2);
+      });
+    }
+
+    function disableButton(playerNum) {
+      const btn = document.getElementById(`player${playerNum}-btn`);
+      btn.disabled = true;
+      btn.classList.add("taken");
+      btn.innerText = `Taken (Player ${playerNum})`;
+    }
+
+    function selectPlayer(num) {
+      const usedPath = `/${roomCode}/Player${num}/Used`;
+      read(usedPath).then(isUsed => {
+        if (isUsed === true) {
+          alert(`Player ${num} already joined!`);
+        } else {
+          write(usedPath, true).then(() => {
+            window.location.href = `game.html?player=${num}&room=${roomCode}`;
+          });
+        }
+      });
+    }
+
+    function copyRoomLink() {
+      const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert("Room link copied to clipboard!");
+      }).catch(err => {
+        console.error("Failed to copy: ", err);
+        alert("Failed to copy the link.");
+      });
+    }
+
+    // On page load: check URL for ?room=XXX and auto-join
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("room");
+      if (code) {
+        roomCode = code.toUpperCase();
+        const path = `/${roomCode}/initialized`;
+        read(path).then(exists => {
+          if (exists !== null) {
+            showRoomCode();
+            showPlayerButtons();
+          } else {
+            alert("Room not found from link.");
+          }
         });
       }
-    });
-  }
-
-  // 🔽 Auto-join if `room` is in the URL on page load
-  window.onload = () => {
-    const params = new URLSearchParams(window.location.search);
-    const codeFromURL = params.get('room');
-    if (codeFromURL) {
-      attemptJoin(codeFromURL.toUpperCase());
-    }
-  };
-</script>
+    };
+  </script>
+</body>
+</html>
