@@ -38,6 +38,7 @@
     };
 
     let playerCount = 0;
+    setupRoom();
 
     async function setupRoom() {
       playerCount = await read(`/${roomCode}/playerCount`);
@@ -51,12 +52,12 @@
         btn.onclick = () => selectPlayer(i);
         container.appendChild(btn);
 
-        firebase.database().ref(`${roomCode}/Player${i}/Used`).on("value", snapshot => {
+        firebase.database().ref(`/${roomCode}/players/${i}/Used`).on("value", snapshot => {
           if (snapshot.val() === true) disableButton(i);
+          if (snapshot.val() === false) enableButton(i);
         });
       }
-
-      waitForAllPlayers();
+      //waitForAllPlayers();
     }
 
     function disableButton(playerNum) {
@@ -68,34 +69,33 @@
       }
     }
 
-    async function selectPlayer(num) {
-      // Disable all buttons to prevent race conditions
-      for (let i = 1; i <= playerCount; i++) disableButton(i);
-
-      const usedPath = `/${roomCode}/Player${num}/Used`;
-      const namePath = `/${roomCode}/Player${num}/Name`;
-
-      const isUsed = await read(usedPath);
-      if (isUsed === true) {
-        alert(`Player ${num} already joined!`);
-        return;
-      }
-
-      const name = prompt(`Enter your name for Player ${num}:`);
-      if (!name || name.trim() === "") {
-        alert("Name cannot be empty.");
-        setupRoom(); // Re-enable buttons
-        return;
-      }
-
-      await Promise.all([
-        write(namePath, name.trim()),
-        write(usedPath, true)
-      ]);
-
-      window.location.href = `game.html?player=${num}&room=${roomCode}`;
+    function enableButton(playerNum) {
+        const btn = document.getElementById(`player${playerNum}-btn`);
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove("taken");
+            btn.innerText = `Player ${playerNum}`;
+        }
     }
 
+    async function selectPlayer(num) {
+        await write(`/${roomCode}/players/${num}/Used`, true);
+
+        const name = prompt(`Enter your name for Player ${num}:`);
+        if (!name || name.trim() === "") {
+            alert("Name cannot be empty.");
+            setupRoom(); // Re-enable buttons
+            await write(`/${roomCode}/players/${num}/Used`, false);
+            return;
+        }
+
+        await write(`/${roomCode}/players/${num}/Name`, name.trim());
+
+        window.location.href = `game.html?player=${num}&room=${roomCode}`;
+    }
+
+
+/*
     async function waitForAllPlayers() {
       firebase.database().ref(`/${roomCode}`).on('value', snapshot => {
         const data = snapshot.val();
@@ -112,9 +112,7 @@
           console.log("All players joined!");
         }
       });
-    }
-
-    setupRoom();
+    }*/
   </script>
 </body>
 </html>

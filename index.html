@@ -66,19 +66,22 @@
     async function createRoom(playerCount) {
       const code = randomCode();
 
-      const writes = [
+      const players = {};
+      for (let i = 1; i <= playerCount; i++) {
+        players[i] = { Used: false };
+      }
+
+      await Promise.all([
+        write(`/${code}/players`, players),
         write(`/${code}/initialized`, false),
         write(`/${code}/gameStarted`, false),
         write(`/${code}/playerCount`, playerCount)
-      ];
+      ]);
 
-      for (let i = 1; i <= playerCount; i++) {
-        writes.push(write(`/${code}/Player${i}/Used`, false));
-      }
-
-      await Promise.all(writes);
       window.location.href = `room.html?room=${code}`;
-    }
+  }
+
+
 
     function joinRoom() {
       const input = prompt("Enter room code:");
