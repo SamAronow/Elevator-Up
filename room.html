@@ -42,6 +42,8 @@
     async function setupRoom() {
       playerCount = await read(`/${roomCode}/playerCount`);
       const container = document.getElementById("player-buttons");
+      container.innerHTML = "";
+
       for (let i = 1; i <= playerCount; i++) {
         const btn = document.createElement("button");
         btn.id = `player${i}-btn`;
@@ -59,34 +61,53 @@
 
     function disableButton(playerNum) {
       const btn = document.getElementById(`player${playerNum}-btn`);
-      btn.disabled = true;
-      btn.classList.add("taken");
-      btn.innerText = `Taken (Player ${playerNum})`;
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add("taken");
+        btn.innerText = `Taken (Player ${playerNum})`;
+      }
     }
 
-    function selectPlayer(num) {
+    async function selectPlayer(num) {
+      // Disable all buttons to prevent race conditions
+      for (let i = 1; i <= playerCount; i++) disableButton(i);
+
       const usedPath = `/${roomCode}/Player${num}/Used`;
-      read(usedPath).then(isUsed => {
-        if (isUsed === true) {
-          alert(`Player ${num} already joined!`);
-        } else {
-          write(usedPath, true).then(() => {
-            window.location.href = `game.html?player=${num}&room=${roomCode}`;
-          });
-        }
-      });
+      const namePath = `/${roomCode}/Player${num}/Name`;
+
+      const isUsed = await read(usedPath);
+      if (isUsed === true) {
+        alert(`Player ${num} already joined!`);
+        return;
+      }
+
+      const name = prompt(`Enter your name for Player ${num}:`);
+      if (!name || name.trim() === "") {
+        alert("Name cannot be empty.");
+        setupRoom(); // Re-enable buttons
+        return;
+      }
+
+      await Promise.all([
+        write(namePath, name.trim()),
+        write(usedPath, true)
+      ]);
+
+      window.location.href = `game.html?player=${num}&room=${roomCode}`;
     }
 
     async function waitForAllPlayers() {
       firebase.database().ref(`/${roomCode}`).on('value', snapshot => {
         const data = snapshot.val();
         let allJoined = true;
+
         for (let i = 1; i <= playerCount; i++) {
           if (!data?.[`Player${i}`]?.Used) {
             allJoined = false;
             break;
           }
         }
+
         if (allJoined) {
           console.log("All players joined!");
         }

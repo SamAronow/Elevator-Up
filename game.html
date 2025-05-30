@@ -30,6 +30,8 @@
     var turn=1
     var player = getPlayerFromURL();
     var code = getCodeFromURL();
+    var numPlayers
+
     if (player==1){
         var opponent=2
     }
@@ -417,11 +419,13 @@
 
     async function initializeGame() {
 
-        var [p1Used, p2Used,gameStarted] = await Promise.all([
+        var [p1Used, p2Used,gameStarted,numPlayers] = await Promise.all([
             read(`/${code}/Player1/Used`),
             read(`/${code}/Player2/Used`),
-            read(`/${code}/gameStarted`)
+            read(`/${code}/gameStarted`),
+            read(`/${code}/playerCount`)
         ]);
+        console.log(numPlayers)
 
 
 
