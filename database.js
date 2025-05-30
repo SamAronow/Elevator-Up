@@ -15,6 +15,11 @@ var database = firebase.database();
 function write(path, value){
     return database.ref(path).set(value);
   }
+
+  function update(path, data) {
+  return firebase.database().ref(path).update(data);
+}
+
   
 
 function read(path) {

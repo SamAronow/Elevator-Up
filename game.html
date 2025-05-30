@@ -31,6 +31,8 @@
     var player = getPlayerFromURL();
     var code = getCodeFromURL();
     var numPlayers
+    var playerName
+    var players
 
     if (player==1){
         var opponent=2
@@ -143,11 +145,8 @@
     ---------------------------------------------------------------------------------------
     */
 
-     function getEnd() {
+    function getEnd() {
         return new Promise(async (resolve) => {
-            const player = getPlayerFromURL();
-            const opponent = player === "1" ? "2" : "1";
-
             const hand = await read(`/${code}/hands/${player}`);
             let selected = [];
 
@@ -204,31 +203,39 @@
                 await write(`/${code}/hands/${player}`, newHand);
                 await write(`/${code}/ends/${player}`, ends);
 
-                waitMessage.textContent = "Waiting for opponent to choose...";
+                waitMessage.textContent = "Waiting for all players to choose...";
 
-                // Set listener for opponent's ends
-                const endsRef = database.ref(`/${code}/ends/${opponent}`);
+                // Start polling until all players have submitted 2 ends
+                const endsRef = database.ref(`/${code}/ends`);
                 endsRef.on('value', (snapshot) => {
-                    const opponentEnds = snapshot.val();
-                    if (Array.isArray(opponentEnds) && opponentEnds.length === 2) {
+                    const endsData = snapshot.val() || {};
+                    let allDone = true;
+
+                    for (let i = 1; i <= numPlayers; i++) {
+                        if (!Array.isArray(endsData[i]) || endsData[i].length !== 2) {
+                            allDone = false;
+                            break;
+                        }
+                    }
+
+                    if (allDone) {
                         popup.remove();
-                        endsRef.off(); // remove listener
-                        resolve();     // now resolve the promise
+                        endsRef.off(); // stop listening
+                        resolve();
                     }
                 });
             };
         });
     }
 
+
     /* Set up functionality for winner pop up and play again and delete room options
     ---------------------------------------------------------------------------------------
     */
-
-    let opp_play_again = false;
-    let opp_delete_game = false;
     let play_again = false;
     let delete_game = false;
-    let playAgainBtn, deleteBtn; 
+     let playAgainBtn, deleteBtn;
+    let otherPlayerChoices = {}; // e.g., {1: {playAgain: true, deleteGame: false}, ...}
 
     async function winner(win) {
         const message = win == player ? "You won!" : "Opponent won!";
@@ -263,25 +270,23 @@
         playAgainBtn = document.createElement("button");
         playAgainBtn.textContent = "Play Again";
         Object.assign(playAgainBtn.style, {
-            padding: "10px 20px",
-            fontSize: "18px",
-            backgroundColor: "#eee",
-            transition: "background-color 0.3s"
+            padding: "10px 20px", fontSize: "18px",
+            backgroundColor: "#eee", transition: "background-color 0.3s"
         });
         playAgainBtn.onclick = () => chooseOption("playAgain");
 
         deleteBtn = document.createElement("button");
         deleteBtn.textContent = "Delete Room";
         Object.assign(deleteBtn.style, {
-            padding: "10px 20px",
-            fontSize: "18px",
-            backgroundColor: "#eee",
-            transition: "background-color 0.3s"
+            padding: "10px 20px", fontSize: "18px",
+            backgroundColor: "#eee", transition: "background-color 0.3s"
         });
         deleteBtn.onclick = () => chooseOption("deleteGame");
 
         const statusMessage = document.createElement("div");
-        Object.assign(statusMessage.style, { marginTop: "15px", fontSize: "18px", color: "#333" });
+        Object.assign(statusMessage.style, {
+            marginTop: "15px", fontSize: "18px", color: "#333"
+        });
 
         buttonContainer.appendChild(playAgainBtn);
         buttonContainer.appendChild(deleteBtn);
@@ -291,79 +296,104 @@
         winpopup.appendChild(winMessageBox);
         document.body.appendChild(winpopup);
 
+        // Attach listeners to all players
+        for (let i = 1; i <= numPlayers; i++) {
+            if (i == player) continue;
 
-        // Listen for opponent's playAgain
-        firebase.database().ref(`/${code}/Player${opponent}/playAgain`).on('value', snapshot => {
-            opp_play_again = !!snapshot.val();
+            firebase.database().ref(`/${code}/players/${i}`).on('value', snapshot => {
+                otherPlayerChoices[i] = snapshot.val() || {};
+                updateStatus();
+            });
+        }
+
+        // Listen for your own data to refresh button highlights
+        firebase.database().ref(`/${code}/players/${player}`).on('value', snapshot => {
+            const data = snapshot.val() || {};
+            play_again = !!data.playAgain;
+            delete_game = !!data.deleteGame;
+            highlightChoice();
             updateStatus();
         });
 
-        // Listen for opponent's deleteGame
-        firebase.database().ref(`/${code}/Player${opponent}/deleteGame`).on('value', snapshot => {
-            opp_delete_game = !!snapshot.val();
-            updateStatus();
-        });
-
-        // Listen for your own playAgain
-        firebase.database().ref(`/${code}/Player${player}/playAgain`).on('value', snapshot => {
-            play_again = !!snapshot.val();
-            updateStatus();
-        });
-
-        // Listen for your own deleteGame
-        firebase.database().ref(`/${code}/Player${player}/deleteGame`).on('value', snapshot => {
-            delete_game = !!snapshot.val();
-            updateStatus();
-        });
 
         function updateStatus() {
-            if (play_again && opp_play_again) {
-                playAgain()
-            } else if (delete_game && opp_delete_game) {
-                deleteGame()
-            } else if (opp_play_again) {
-                statusMessage.textContent = "Opponent wants to play again";
-            } else if (opp_delete_game) {
-                statusMessage.textContent = "Opponent wants to delete room";
+            const allPlayAgain = play_again && Object.values(otherPlayerChoices).every(p => p.playAgain);
+            const allDelete = delete_game && Object.values(otherPlayerChoices).every(p => p.deleteGame);
+
+            if (allPlayAgain) {
+                playAgain();
+            } else if (allDelete) {
+                deleteGame();
             } else {
-                statusMessage.textContent = "Waiting on opponent...";
+                const playAgainNames = Object.values(otherPlayerChoices)
+                    .filter(p => p.playAgain)
+                    .map(p => p.Name);
+
+                const deleteNames = Object.values(otherPlayerChoices)
+                    .filter(p => p.deleteGame)
+                    .map(p => p.Name);
+
+                const playNameText = playAgainNames.join(", ");
+                const deleteNameText = deleteNames.join(", ");
+
+                if (playAgainNames.length > 0 && deleteNames.length > 0) {
+                    statusMessage.innerHTML = `
+                        ${playNameText} ${playAgainNames.length === 1 ? "wants" : "want"} to play again<br>
+                        ${deleteNameText} ${deleteNames.length === 1 ? "wants" : "want"} to delete room
+                    `;
+                }
+                else if (playAgainNames.length > 0) {
+                    statusMessage.textContent = `${playNameText} ${playAgainNames.length === 1 ? "wants" : "want"} to play again`;
+                } 
+                else if (deleteNames.length > 0){
+                    statusMessage.textContent = `${deleteNameText} ${deleteNames.length === 1 ? "wants" : "want"} to delete room`;
+                }
+                else {
+                    statusMessage.textContent = "Waiting on others...";
+                }
             }
         }
 
-        //if the page is refreshed re color the buttons
-        let data = await read(`/${code}/Player${player}`);
-        if (data?.playAgain) {
-            chooseOption("playAgain");
-        } 
-        else if (data?.deleteGame) {
-            chooseOption("deleteGame");
+        function highlightChoice() {
+            playAgainBtn.style.backgroundColor = play_again ? "#cce5cc" : "#eee";
+            deleteBtn.style.backgroundColor = delete_game ? "#f5cccc" : "#eee";
         }
     }
 
-    
-
     async function chooseOption(option) {
-        // Reset button styles
-        playAgainBtn.style.backgroundColor = "#eee";
-        deleteBtn.style.backgroundColor = "#eee";
-
         if (option === "playAgain") {
             play_again = true;
             delete_game = false;
-            playAgainBtn.style.backgroundColor = "#cce5cc"; // light green highlight
-            await write(`/${code}/Player${player}/playAgain`, true);
-            await write(`/${code}/Player${player}/deleteGame`, false);
-        } else if (option === "deleteGame") {
+            playAgainBtn.style.backgroundColor = "#cce5cc";
+            deleteBtn.style.backgroundColor = "#eee";
+            await update(`/${code}/players/${player}`, {
+                playAgain: true,
+                deleteGame: false
+            });
+
+        } 
+        else if (option === "deleteGame") {
             delete_game = true;
             play_again = false;
-            deleteBtn.style.backgroundColor = "#f5cccc"; // light red highlight
-            await write(`/${code}/Player${player}/playAgain`, false);
-            await write(`/${code}/Player${player}/deleteGame`, true);
+            deleteBtn.style.backgroundColor = "#f5cccc";
+            playAgainBtn.style.backgroundColor = "#eee";
+            await update(`/${code}/players/${player}`, {
+                playAgain: false,
+                deleteGame: true
+            });
         }
     }
 
+
     async function playAgain(){
         if (player==1){
+
+            const removePlayerPaths = [];
+            for (let i = 1; i <= numPlayers; i++) {
+                removePlayerPaths.push(removeNode(`/${code}/players/${i}/deleteGame`));
+                removePlayerPaths.push(removeNode(`/${code}/players/${i}/playAgain`));
+            }
+            
             await Promise.all([
                 removeNode(`/${code}/hands`),
                 removeNode(`/${code}/inPlay`),
@@ -375,23 +405,20 @@
                 removeNode(`/${code}/turn`),
                 removeNode(`/${code}/deck`),
                 removeNode(`/${code}/ends`),
-                removeNode(`/${code}/Player1/deleteGame`),
-                removeNode(`/${code}/Player1/playAgain`),
-                removeNode(`/${code}/Player2/deleteGame`),
-                removeNode(`/${code}/Player2/playAgain`),
-                write(`/${code}/gameStarted`,false),
-                write(`/${code}/initialized`,false),
+                ...removePlayerPaths,
+                write(`/${code}/gameStarted`, false),
+                write(`/${code}/initialized`, false),
                 write(`/${code}/resetDone`, true)
             ]);
             location.reload();
         }
         else {
-        firebase.database().ref(`/${code}/resetDone`).on('value', snapshot => {
-            if (snapshot.val() === true) {
-                location.reload();
-            }
-        });
-    }
+            firebase.database().ref(`/${code}/resetDone`).on('value', snapshot => {
+                if (snapshot.val() === true) {
+                    location.reload();
+                }
+            });
+        }
     }
 
     async function deleteGame(){
@@ -418,91 +445,79 @@
     });
 
     async function initializeGame() {
+        players = await read(`/${code}/players`);
+        playerName= players[player]?.Name
+        const gameStarted = await read(`/${code}/gameStarted`);
+        numPlayers = await read(`/${code}/playerCount`);
 
-        var [p1Used, p2Used,gameStarted,numPlayers] = await Promise.all([
-            read(`/${code}/Player1/Used`),
-            read(`/${code}/Player2/Used`),
-            read(`/${code}/gameStarted`),
-            read(`/${code}/playerCount`)
-        ]);
-        console.log(numPlayers)
+        // Ensure all players are marked as "Used"
+        const allPlayersJoined = players && players.every(p => p && p.Used);
+        if (!allPlayersJoined) {
+            console.log("Waiting for all players to join...");
+            return;
+        }
 
+        const alreadyInit = await read(`/${code}/initialized`);
+        if (alreadyInit === true) {
+            if (!gameStarted) {
+                write(`/${code}/players/${player}/playAgain`, false);
+                write(`/${code}/players/${player}/deleteGame`, false);
+                await getEnd();
+            }
 
+            // Listen for turn changes
+            const turnRef = database.ref(`/${code}/turn`);
+            turnRef.on('value', () => updateGame());
 
-        if (p1Used && p2Used) {
-            var alreadyInit = await read(`/${code}/initialized`);
-            if (alreadyInit === true) {
-                if (!gameStarted){
-                    console.log("game")
-                    write(`/${code}/Player${player}/playAgain`,false)
-                    write(`/${code}/Player${player}/deleteGame`,false)
-                    await getEnd(); 
-                }
+            // Listen for mystery plays
+            const mystRef = database.ref(`/${code}/mysteryPlayed`);
+            mystRef.on('value', async (snapshot) => {
+                let turn = await read(`/${code}/turn`);
+                let lastVal = await read(`/${code}/lastVal`);
+                var isMyTurn = turn === Number(player);
 
-                var turnRef = database.ref(`/${code}/turn`);
-                turnRef.on('value', async (snapshot) => {
-                    updateGame()
-                });
+                let data = snapshot.val();
+                if (!data || !data.played) return;
+
+                let card = data.played;
+                let isLegal = legalMove(card, lastVal);
+
+                const oldPopup = document.getElementById("popup");
+                if (oldPopup) oldPopup.remove();
+
+                const popup = document.createElement("div");
+                popup.id = "popup";
+                popup.style = `
+                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                    background-color: rgba(0, 0, 0, 0.5); display: flex;
+                    justify-content: center; align-items: center; z-index: 1000;
+                `;
+
+                const messageBox = document.createElement("div");
+                messageBox.style = "background:#fff; padding:30px; border-radius:8px; text-align:center; font-size:20px";
                 
-                var mystRef = database.ref(`/${code}/mysteryPlayed`);
-                mystRef.on('value', async (snapshot) => {
-                    let turn = await read(`/${code}/turn`);
-                    let lastVal = await read(`/${code}/lastVal`);
+                players = await read(`/${code}/players`);
+                const currentPlayerName = players[turn]?.Name || `Player ${turn}`;
+                const displayName = isMyTurn ? "Your" : `${currentPlayerName}'s`;
+                messageBox.innerHTML = `
+                    ${displayName} card played was <strong>${card}</strong><br>
+                    It is <strong style="color:${isLegal ? 'green' : 'red'}">${isLegal ? 'legal' : 'not legal'}</strong>
+                `;
 
-                    var isMyTurn = turn === Number(player);
 
-                    let data = snapshot.val();
-                    if (!data || !data.played) return;
+                popup.appendChild(messageBox);
+                document.body.appendChild(popup);
 
-                    let card = data.played;
-
-                    let isLegal = legalMove(card, lastVal);
-
-                    // Remove any existing popup
-                    const oldPopup = document.getElementById("popup");
-                    if (oldPopup) oldPopup.remove();
-
-                    const popup = document.createElement("div");
-                    popup.id = "popup";
-                    popup.style.position = "fixed";
-                    popup.style.top = "0";
-                    popup.style.left = "0";
-                    popup.style.width = "100vw";
-                    popup.style.height = "100vh";
-                    popup.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-                    popup.style.display = "flex";
-                    popup.style.justifyContent = "center";
-                    popup.style.alignItems = "center";
-                    popup.style.zIndex = "1000";
-
-                    const messageBox = document.createElement("div");
-                    messageBox.style.background = "#fff";
-                    messageBox.style.padding = "30px";
-                    messageBox.style.borderRadius = "8px";
-                    messageBox.style.textAlign = "center";
-                    messageBox.style.fontSize = "20px";
-
-                    const whoPlayed = isMyTurn ? "Your" : "Opponent's";
-
-                    messageBox.innerHTML = `
-                        ${whoPlayed} card played was <strong>${card}</strong><br>
-                        It is <strong style="color:${isLegal ? 'green' : 'red'}">${isLegal ? 'legal' : 'not legal'}</strong>
-                    `;
-
-                    popup.appendChild(messageBox);
-                    document.body.appendChild(popup);
-
-                    setTimeout(() => {
+                setTimeout(() => {
                     if (isMyTurn) {
                         const actionContainer = document.createElement("div");
                         actionContainer.style.marginTop = "20px";
-
                         if (isLegal) {
                             const playBtn = document.createElement("button");
                             playBtn.textContent = "Play Card";
                             playBtn.onclick = () => {
                                 popup.remove();
-                                endTurn(card,1,2)
+                                endTurn(card, 1, 2);
                             };
                             actionContainer.appendChild(playBtn);
                         } else {
@@ -514,59 +529,59 @@
                             };
                             actionContainer.appendChild(takeBtn);
                         }
-
                         messageBox.appendChild(actionContainer);
                     } else {
                         messageBox.innerHTML += `<br><br>Waiting for opponent to ${isLegal ? "play" : "take cards"}.`;
                     }
                 }, 1200);
+            });
 
-
-                });
-                await write(`/${code}/gameStarted`,true)
-
-                updateGame();
-                return;
-            }
-
-            var baseDeck = ["D", "P"];
-            for (let i = 0; i <4; i++) {
-                for (let j = 2; j <= 10; j++) baseDeck.push(j.toString());
-                    baseDeck.push("L", "N", "S");
-                   // baseDeck.push("L", "S");
-
-            }
-            shuffle(baseDeck);
-
-            var myst1 = deal(baseDeck, 3);
-            var myst2 = deal(baseDeck, 3);
-            var hand1 = deal(baseDeck, 5);
-            var hand2 = deal(baseDeck, 5);
-
-            await Promise.all([
-                write(`/${code}/deck`, baseDeck),
-                write(`/${code}/mysts/1`, myst1),
-                write(`/${code}/mysts/2`, myst2),
-                write(`/${code}/hands/1`, hand1),
-                write(`/${code}/hands/2`, hand2),
-                write(`/${code}/ends/1`, []),
-                write(`/${code}/ends/2`, []),
-                write(`/${code}/inPlay`, []),
-                write(`/${code}/turn`, 1),
-                write(`/${code}/mysteryPlayed`, false),
-                write(`/${code}/lastMove`, null),
-                write(`/${code}/lastVal`, null),
-                write(`/${code}/lastAmt`, null),
-                write(`/${code}/resetDone`, false)
-            ]);
-
-            await write(`/${code}/initialized`, true);
-
+            await write(`/${code}/gameStarted`, true);
+            //updateGame();
+            return;
         }
-        else {
-            console.log("Waiting for both players...");
+
+        // --- Game not yet initialized, so initialize it now ---
+        const baseDeck = ["D", "P"];
+        for (let i = 0; i < 4; i++) {
+            for (let j = 2; j <= 10; j++) baseDeck.push(j.toString());
+            baseDeck.push("L", "N", "S");
         }
+        shuffle(baseDeck);
+
+        const deck = [...baseDeck];
+        const hands = {};
+        const mysts = {};
+        const ends = {};
+
+        for (let i = 1; i <= numPlayers; i++) {
+            hands[i] = deal(deck, 5);
+            mysts[i] = deal(deck, 3);
+            ends[i] = [];
+        }
+
+        const writes = [
+            write(`/${code}/deck`, deck),
+            write(`/${code}/inPlay`, []),
+            write(`/${code}/turn`, 1),
+            write(`/${code}/mysteryPlayed`, false),
+            write(`/${code}/lastMove`, null),
+            write(`/${code}/lastVal`, null),
+            write(`/${code}/lastAmt`, null),
+            write(`/${code}/resetDone`, false),
+        ];
+
+        for (let i = 1; i <= numPlayers; i++) {
+            writes.push(write(`/${code}/hands/${i}`, hands[i]));
+            writes.push(write(`/${code}/mysts/${i}`, mysts[i]));
+            writes.push(write(`/${code}/ends/${i}`, []));
+        }
+
+        await Promise.all(writes);
+
+        await write(`/${code}/initialized`, true)
     }
+
 
    /* Set up the end of turn processes
     ---------------------------------------------------------------------------------------
@@ -674,14 +689,15 @@
             }
         }
 
-
-
         if (stage==0){
             if (inPlay === null) {
                 inPlay = [];
             }
             if (deck === null) {
                 deck = [];
+            }
+            if (hand === null) {
+                hand = [];
             }
             for (i=0; i<amt; i++){
                 inPlay.push(card)
@@ -721,12 +737,6 @@
             await write(`/${code}/mysts/${player}`, myst_cards)
         }
     
-        if (turn==1){
-            newTurn=2
-        }
-        else{
-            newTurn=1
-        }
         if (card =='N' || (!isNaN(parseInt(card)) && (amt==4 || ((amt+prevAmt)%4==0 && card==lastMove)))){
             write(`/${code}/inPlay`,[])
         }
@@ -734,10 +744,15 @@
             write(`/${code}/inPlay`,inPlay)
         }
 
-        //swtich turns
+        let newTurn = (turn % numPlayers) + 1;
+        temp=turn
         write(`/${code}/turn`,newTurn)
-        if (card =='N' || card =='D' || (!isNaN(parseInt(card)) && (amt==4 || ((amt+prevAmt)%4==0 && card==lastMove)))){
-            write(`/${code}/turn`,turn)   
+        if (card =='N' || (!isNaN(parseInt(card)) && (amt==4 || ((amt+prevAmt)%4==0 && card==lastMove)))){
+            write(`/${code}/turn`,temp)   
+        }
+        else if (card =='D'){
+            newTurn = (newTurn % numPlayers) + 1;
+            write(`/${code}/turn`,newTurn)   
         }
     }  
 
@@ -766,136 +781,158 @@
         hand.push(...inPlay);
         inPlay=[]
 
-        if (turn==1){
-            newTurn=2
-        }
-        else{
-            newTurn=1
-        }
-        write(`/${code}/lastMove`, null);
-        write(`/${code}/lastVal`, null);
-        write(`/${code}/lastAmt`, null);
-        await write(`/${code}/inPlay`, inPlay);
-        await write(`/${code}/hands/${player}`, hand);
-        await write(`/${code}/turn`, newTurn);
+        let newTurn = (turn % numPlayers) + 1;
+        await Promise.all([
+            write(`/${code}/lastMove`, null),
+            write(`/${code}/lastVal`, null),
+            write(`/${code}/lastAmt`, null),
+            write(`/${code}/inPlay`, inPlay),
+            write(`/${code}/hands/${player}`, hand),
+            write(`/${code}/turn`, newTurn)
+        ]);
+
     }
 
     /* Set up the Displays
     ---------------------------------------------------------------------------------------
     */
 
-    async function updateGame() {
-        var [deck,inPlay,hand, opponentHand, ends, opponentEnds, mysts,opponentMysts, lastMove, lastVal, lastAmt] = await Promise.all([
-            read(`/${code}/deck`),
-            read(`/${code}/inPlay`),
-            read(`/${code}/hands/${player}`),
-            read(`/${code}/hands/${opponent}`),
-            read(`/${code}/ends/${player}`),
-            read(`/${code}/ends/${opponent}`),
-            read(`/${code}/mysts/${player}`),
-            read(`/${code}/mysts/${opponent}`),
-            read(`/${code}/lastMove`),
-            read(`/${code}/lastVal`),
-            read(`/${code}/lastAmt`)
+   async function updateGame() {
+    var [deck, inPlay, hand, ends, mysts, lastMove, lastVal, lastAmt, allPlayers] = await Promise.all([
+        read(`/${code}/deck`),
+        read(`/${code}/inPlay`),
+        read(`/${code}/hands/${player}`),
+        read(`/${code}/ends/${player}`),
+        read(`/${code}/mysts/${player}`),
+        read(`/${code}/lastMove`),
+        read(`/${code}/lastVal`),
+        read(`/${code}/lastAmt`),
+        read(`/${code}/players`)
+    ]);
+
+    if (inPlay === null) inPlay = [];
+    if (deck === null)  deck = [];
+    if (hand === null) hand = [];
+    if (ends === null) ends = [];
+    if (mysts === null) mysts = []
+
+    turn = await read(`/${code}/turn`);
+
+    const opponents = allPlayers
+        .map((p, idx) => ({ ...p, id: idx }))
+        .filter((p, idx) => p && idx !== Number(player) && idx !== 0);
+
+
+    const opponentHTML = await Promise.all(opponents.map(async (p) => {
+    var [h, e, m] = await Promise.all([
+        read(`/${code}/hands/${p.id}`),
+        read(`/${code}/ends/${p.id}`),
+        read(`/${code}/mysts/${p.id}`)
+    ]);
+    if (h === null) h = [];
+    if (e === null) e = [];
+    if (m === null) m = [];
+
+    // Bold and dot if it's their turn
+    const isTurn = turn === p.id;
+    const nameDisplay = isTurn
+        ? `<b style="color:green;">${p.Name}</b>`
+        : `${p.Name}`;
+
+    return `
+        <div class="opponent-block">
+            <h3>${nameDisplay}</h3>
+            <div>Hand: ${"X ".repeat(h.length).trim()}</div>
+            <div>Ends: ${e.join(" ")}</div>
+            <div>Mystery: ${"X ".repeat(m.length).trim()}</div>
+        </div>
+        `;
+    }));
+
+
+    const deck_len = deck.length;
+    const play_len = inPlay.length;
+    const sortedHand = sortCards(hand);
+    const isMyTurn = turn === Number(player);
+
+    const youNameDisplay = isMyTurn
+        ? `<b style="color:green;">You</b>`
+        : `You`;
+
+    document.title = isMyTurn ? "Your turn" : "Opponent Turn";
+    if (document.visibilityState !== 'visible') startFlashingTitle("Your Turn!");
+
+    let lastMoveText = "Last played: None";
+    if (lastMove != null) {
+        const extra = (lastMove === "D" || lastMove === "S") ? ` (on ${lastVal})` : "";
+        lastMoveText = `Last played: ${lastMove}${extra}`;
+    }
+
+
+    document.body.innerHTML = `
+        <div class="section" style="display:flex; gap: 40px; overflow-x: auto;">
+            ${opponentHTML.join("")}
+        </div>
+
+        <hr>
+
+        <div class="section">
+            <pre>Cards in Deck: ${deck_len}</pre>
+            <pre>Cards in Play: ${play_len}</pre>
+            <h3>Last played:</h3>
+            <pre>${lastMoveText}</pre>
+            <pre>Quantity: ${lastAmt}</pre>
+        </div>
+
+        <div class="section">
+            <h2>${youNameDisplay}</h2>
+            <div class="cards" id="hand">
+                ${sortedHand.map(card => 
+                    `<button class="card-button" data-card="${card}">${card}</button>`
+                ).join(" ")}
+            </div>
+
+            <div class="cards" id="ends">
+                <p>Ends </p>
+                ${(ends).map(card =>
+                    `<button class="card-button end-card" data-card="${card}">${card}</button>`
+                ).join(" ")}
+            </div>
+
+            <div class="cards" id="ends">
+            <p>Mystery </p>
+            ${(mysts).map(card =>
+                `<button class="card-button myst-card" data-card="${card}">X</button>`
+            ).join(" ")}
+        </div>
+    </div>
+
+    <div class="section">
+        <h3 id="turn-status">${isMyTurn ? "Your turn" : "Waiting for opponent..."}</h3>
+    </div>
+`;
+
+
+    canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
+
+    // Check for win condition
+    if ((hand?.length ?? 0) === 0 && (ends?.length ?? 0) === 0 && (mysts?.length ?? 0) === 0) {
+        winner(player);
+    }
+
+    for (let p of opponents) {
+        var [h, e, m] = await Promise.all([
+            read(`/${code}/hands/${p.id}`),
+            read(`/${code}/ends/${p.id}`),
+            read(`/${code}/mysts/${p.id}`)
         ]);
 
-
-
-
-        if (inPlay === null) inPlay = [];
-        if (deck === null)  deck = [];
-        if (hand === null) hand = [];
-        if (opponentHand === null) opponentHand = [];
-        if (opponentEnds === null) opponentEnds = [];
-        if (ends === null) ends = [];
-        if (mysts === null) mysts = []
-        if (opponentMysts === null) opponentMysts=[]
-
-
-        deck_len=deck.length
-        play_len=inPlay.length
-
-
-
-        turn = await read(`/${code}/turn`);
-        
-        hand = sortCards(hand);
-
-
-        hand = sortCards(hand);
-
-        var isMyTurn = turn === Number(player);
-
-        document.title = isMyTurn ? "Your turn" : "Opponent Turn"
-
-        const isTabActive = document.visibilityState === 'visible';
-        if (!isTabActive) {
-            startFlashingTitle("Your Turn!");
-        }
-
-
-        let lastMoveText = "Last played: None";
-        if (lastMove != null) {
-            const extra = (lastMove === "D" || lastMove === "S") ? ` (on ${lastVal})` : "";
-            lastMoveText = `Last played: ${lastMove}${extra}`;
-        }
-
-        document.body.innerHTML = `
-            <div class="section">
-                <h2>Opponent</h2>
-                <div class="cards">Hand: ${"X ".repeat(opponentHand.length).trim()}</div>
-                <div class="cards">Ends: ${opponentEnds.join(" ")}</div> 
-                <div class="cards">Mystery: ${"X ".repeat(opponentMysts.length).trim()}</div>
-            </div>
-
-            <hr>
-
-            <div class="section">
-                <pre>Cards in Deck: ${deck_len}</pre>
-                <pre>Cards in Play: ${play_len}</pre>
-                <h3>Last played:</h3>
-                <pre>${lastMoveText}</pre>
-                <pre>Quantity: ${lastAmt}</pre>
-            </div>
-
-            <div class="section">
-                <h2>You (${player})</h2>
-                <div class="cards" id="hand">
-                    ${hand.map(card => 
-                        `<button class="card-button" data-card="${card}">${card}</button>`
-                    ).join(" ")}
-                </div>
-
-                <div class="cards" id="ends">
-                    <p>Ends </p>
-                    ${ends.map(card =>
-                        `<button class="card-button end-card" data-card="${card}">${card}</button>`
-                    ).join(" ")}
-                </div>
-                <div class="cards" id="ends">
-                    <p>Mystery </p>
-                    ${mysts.map(card =>
-                        `<button class="card-button myst-card" data-card="${card}">X</button>`
-                    ).join(" ")}
-                </div>
-            </div>
-
-            <div class="section">
-                <h3 id="turn-status">${isMyTurn ? "Your turn" : "Waiting for opponent..."}</h3>
-            </div>
-        `;
-
-
-        // Normal hand interaction
-        canPlay = updateHandButtons(isMyTurn, lastVal,deck,hand,ends);
-
-        if (hand.length==0 && ends.length==0 && mysts.length==0){
-            winner(player)
-        }
-        if (opponentHand.length==0 && opponentEnds.length==0 && opponentMysts.length==0){
-            winner(opponent)
+        if ((h?.length ?? 0) === 0 && (e?.length ?? 0) === 0 && (m?.length ?? 0) === 0) {
+            winner(p.id);
         }
     }
+}
+
 
     function updateHandButtons(enabled, lastVal,deck,hand,ends) {
         let canPlay = false;
