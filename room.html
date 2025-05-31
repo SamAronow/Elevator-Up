@@ -3,18 +3,142 @@
 <head>
   <title>Elevator Up - Room</title>
   <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1e1e2f;
+      color: #f0e68c;
+      margin: 0;
+      padding: 40px 20px;
+      text-align: center;
+      user-select: none;
+      font-size: 20px;
+      line-height: 1.4;
+    }
+
+    h1, h2 {
+      margin-bottom: 20px;
+      font-weight: 700;
+      color: #f0e68c;
+      text-shadow: none;
+    }
+
+    #room-code-display {
+      font-size: 26px;
+      margin-bottom: 30px;
+      font-weight: 600;
+      color: #f0e68c;
+      text-shadow: none;
+    }
+
     button {
-      padding: 10px 20px;
-      font-size: 18px;
-      margin: 10px;
+      padding: 14px 28px;
+      font-size: 22px;
+      margin: 14px 12px;
       cursor: pointer;
+      border-radius: 14px;
+      border: none;
+      background-color: #f0e68c;
+      color: #1e1e2f;
+      font-weight: 700;
+      box-shadow: none;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      user-select: none;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #d4ca57;
+      color: #1a1a25;
     }
 
     button.taken {
       background-color: #555;
       color: white;
       cursor: not-allowed;
+      box-shadow: none;
     }
+
+    button:disabled {
+      cursor: not-allowed;
+    }
+
+    /* Popup Styles */
+    .popup-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      user-select: none;
+    }
+
+    .popup {
+      position: relative;
+      background: #f0e68c;
+      padding: 50px 40px;
+      border-radius: 24px;
+      text-align: center;
+      width: 360px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #1e1e2f;
+      user-select: text;
+      font-size: 22px;
+    }
+
+    .popup h2 {
+      margin-bottom: 25px;
+      font-weight: 700;
+      font-size: 28px;
+      color: #1e1e2f;
+      text-shadow: none;
+    }
+
+    .popup input[type="text"] {
+      width: 100%;
+      padding: 14px;
+      font-size: 20px;
+      border-radius: 12px;
+      border: 1px solid #aaa;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+      outline: none;
+      font-weight: 600;
+      color: #1e1e2f;
+      user-select: text;
+    }
+
+    .popup input[type="text"]:focus {
+      border-color: #99994f;
+      box-shadow: 0 0 8px #c9c657;
+    }
+
+    .popup button {
+      background-color: #1e1e2f;
+      color: #f0e68c;
+      margin-top: 10px;
+      width: 100%;
+      padding: 14px 0;
+      font-size: 22px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 700;
+      box-shadow: none;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+
+    .popup button:hover {
+      background-color: #33334d;
+    }
+
+   
   </style>
 </head>
 <body>
@@ -24,6 +148,15 @@
   <h2>Select a Player</h2>
   <div id="player-buttons"></div>
 
+  <!-- Player Name Input Popup -->
+  <div id="player-name-popup" class="popup-overlay">
+    <div class="popup" id="popup-box">
+      <h2>Enter your name</h2>
+      <input type="text" id="player-name-input" maxlength="20" placeholder="Your name" autocomplete="off" />
+      <button class="submit-btn">Submit</button>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="database.js"></script>
@@ -32,9 +165,19 @@
     const roomCode = urlParams.get("room");
 
     document.getElementById("room-code-display").textContent = `Room Code: ${roomCode}`;
-    document.getElementById("copy-link-btn").onclick = () => {
+
+    // Copy link animation (no alert)
+    const copyBtn = document.getElementById("copy-link-btn");
+    copyBtn.onclick = () => {
       const roomURL = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-      navigator.clipboard.writeText(roomURL).then(() => alert("Room link copied!"));
+      navigator.clipboard.writeText(roomURL).then(() => {
+        copyBtn.textContent = "Copied!";
+        copyBtn.disabled = true;
+        setTimeout(() => {
+          copyBtn.textContent = "Copy Room Link";
+          copyBtn.disabled = false;
+        }, 1000);
+      });
     };
 
     let playerCount = 0;
@@ -52,12 +195,15 @@
         btn.onclick = () => selectPlayer(i);
         container.appendChild(btn);
 
+        // Listen for Used status changes and update button accordingly
         firebase.database().ref(`/${roomCode}/players/${i}/Used`).on("value", snapshot => {
           if (snapshot.val() === true) disableButton(i);
-          if (snapshot.val() === false) enableButton(i);
+          else {
+            enableButton(i);
+console.log("bye")
+          }
         });
       }
-      //waitForAllPlayers();
     }
 
     function disableButton(playerNum) {
@@ -70,49 +216,85 @@
     }
 
     function enableButton(playerNum) {
-        const btn = document.getElementById(`player${playerNum}-btn`);
-        if (btn) {
-            btn.disabled = false;
-            btn.classList.remove("taken");
-            btn.innerText = `Player ${playerNum}`;
-        }
+      const btn = document.getElementById(`player${playerNum}-btn`);
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("taken");
+        btn.innerText = `Player ${playerNum}`;
+      }
     }
 
+selectedPlayerNum=null
     async function selectPlayer(num) {
-        await write(`/${roomCode}/players/${num}/Used`, true);
+        selectedPlayerNum=num
+      await write(`/${roomCode}/players/${num}/Used`, true);
+      const name = await showNamePopup(num);
 
-        const name = prompt(`Enter your name for Player ${num}:`);
-        if (!name || name.trim() === "") {
-            alert("Name cannot be empty.");
-            setupRoom(); // Re-enable buttons
-            await write(`/${roomCode}/players/${num}/Used`, false);
-            return;
-        }
+      if (!name) {
+        alert("Name cannot be empty.");
+        await write(`/${roomCode}/players/${num}/Used`, false);
+        setupRoom();
+        return;
+      }
 
-        await write(`/${roomCode}/players/${num}/Name`, name.trim());
-
-        window.location.href = `game.html?player=${num}&room=${roomCode}`;
+      await write(`/${roomCode}/players/${num}/Name`, name.trim());
+      window.location.href = `game.html?player=${num}&room=${roomCode}`;
     }
 
+    function showNamePopup(num) {
+      return new Promise((resolve) => {
+        const popup = document.getElementById("player-name-popup");
+        const input = document.getElementById("player-name-input");
+        const submitBtn = popup.querySelector("button.submit-btn");
 
-/*
-    async function waitForAllPlayers() {
-      firebase.database().ref(`/${roomCode}`).on('value', snapshot => {
-        const data = snapshot.val();
-        let allJoined = true;
+        popup.style.display = "flex";
+        input.value = "";
+        input.focus();
 
-        for (let i = 1; i <= playerCount; i++) {
-          if (!data?.[`Player${i}`]?.Used) {
-            allJoined = false;
-            break;
+        function cleanupAndResolve(name) {
+          submitBtn.removeEventListener("click", onSubmit);
+          popup.style.display = "none";
+          resolve(name);
+        }
+
+        function onSubmit() {
+          const val = input.value.trim();
+          if (val.length === 0) return;
+          cleanupAndResolve(val);
+        }
+
+        submitBtn.addEventListener("click", onSubmit);
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            onSubmit();
+          } else if (e.key === "Escape") {
+            cleanupAndResolve(null);
           }
-        }
-
-        if (allJoined) {
-          console.log("All players joined!");
-        }
+        });
       });
-    }*/
+    }
+
+    // Cancel name entry: close popup and re-enable the button
+    async function cancelNameEntry() {
+      if (selectedPlayerNum !== null) {
+        await write(`/${roomCode}/players/${selectedPlayerNum}/Used`, false);
+      }
+      closeNamePopup();
+    }
+
+    function closeNamePopup() {
+      document.getElementById("player-name-popup").style.display = "none";
+      selectedPlayerNum = null;
+    }
+
+    
+    // Close popup if click outside popup box, treat as cancel
+    document.getElementById("player-name-popup").addEventListener("click", (e) => {
+      if (e.target.id === "player-name-popup") {
+        cancelNameEntry();
+      }
+    });
   </script>
 </body>
 </html>

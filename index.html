@@ -1,52 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Elevator Up - Room Select</title>
+  <title>Elevator Up</title>
   <style>
-    button {
-      padding: 10px 20px;
-      font-size: 18px;
-      margin: 10px;
-      cursor: pointer;
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom, #1e1e2f, #2d2d44);
+      color: white;
+      text-align: center;
     }
 
-    #player-count-popup {
+    h1 {
+      margin-top: 60px;
+      font-size: 48px;
+      color: #f0e68c;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 20px;
+      margin: 20px;
+      cursor: pointer;
+      border: none;
+      border-radius: 12px;
+      background-color: #f0e68c;
+      color: #1e1e2f;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .popup-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background-color: rgba(0,0,0,0.7);
-      display: flex;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: none; /* Initially hidden */
       justify-content: center;
       align-items: center;
       z-index: 1000;
     }
 
-    #popup-content {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
+    .popup {
+      background: #fff;
+      padding: 40px 30px;
+      border-radius: 20px;
       text-align: center;
+      width: 320px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
-    #popup-content h2 {
+    .popup h2 {
       margin-bottom: 20px;
+      color: #1e1e2f;
+    }
+
+    .popup button {
+      background-color: #1e1e2f;
+      color: #f0e68c;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .popup button:hover {
+      background-color: #33334d;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      box-sizing: border-box;
     }
   </style>
 </head>
 <body>
-  <h1>Elevator Up </h1>
+
+  <h1>Elevator Up</h1>
   <button onclick="openPlayerCountPopup()">Create Room</button>
-  <button onclick="joinRoom()">Join Room</button>
+  <button onclick="openJoinPopup()">Join Room</button>
 
   <!-- Player Count Popup -->
-  <div id="player-count-popup" style="display: none;">
-    <div id="popup-content">
+  <div id="player-count-popup" class="popup-overlay" onclick="closePopups(event)">
+    <div class="popup" onclick="event.stopPropagation()">
       <h2>Choose number of players</h2>
       <button onclick="createRoom(2)">2 Players</button>
       <button onclick="createRoom(3)">3 Players</button>
       <button onclick="createRoom(4)">4 Players</button>
+    </div>
+  </div>
+
+  <!-- Join Room Popup -->
+  <div id="join-popup" class="popup-overlay" onclick="closePopups(event)">
+    <div class="popup" onclick="event.stopPropagation()">
+      <h2>Enter Room Code</h2>
+      <input type="text" id="room-code-input" placeholder="e.g. ABCD" maxlength="4" oninput="this.value = this.value.toUpperCase()" />
+      <button onclick="submitJoinRoom()">Join</button>
     </div>
   </div>
 
@@ -61,9 +126,29 @@
 
     function openPlayerCountPopup() {
       document.getElementById("player-count-popup").style.display = "flex";
+      localStorage.setItem("openPopup", "playerCount");
+    }
+
+    function openJoinPopup() {
+      document.getElementById("join-popup").style.display = "flex";
+      const input = document.getElementById("room-code-input");
+      input.value = '';
+      input.focus();
+      localStorage.setItem("openPopup", "join");
+    }
+
+    // Close popup if click outside popup content
+    function closePopups(event) {
+      if (event.target.classList.contains('popup-overlay')) {
+        document.getElementById("player-count-popup").style.display = "none";
+        document.getElementById("join-popup").style.display = "none";
+        localStorage.removeItem("openPopup");
+      }
     }
 
     async function createRoom(playerCount) {
+      localStorage.removeItem("openPopup");
+
       const code = randomCode();
 
       const players = {};
@@ -79,22 +164,34 @@
       ]);
 
       window.location.href = `room.html?room=${code}`;
-  }
-
-
-
-    function joinRoom() {
-      const input = prompt("Enter room code:");
-      if (!input) return;
-      const code = input.toUpperCase();
-      read(`/${code}/initialized`).then(exists => {
-        if (exists !== null) {
-          window.location.href = `room.html?room=${code}`;
-        } else {
-          alert("Room not found!");
-        }
-      });
     }
+
+    function submitJoinRoom() {
+      const input = document.getElementById("room-code-input");
+      const code = input.value.toUpperCase().trim();
+      if (!code) return;
+
+      localStorage.removeItem("openPopup");
+
+      window.location.href = `room.html?room=${code}`;
+    }
+
+    // On page load, reopen popup if saved in localStorage
+    window.addEventListener("load", () => {
+      const openPopup = localStorage.getItem("openPopup");
+      if (openPopup === "playerCount") {
+        openPlayerCountPopup();
+      } else if (openPopup === "join") {
+        openJoinPopup();
+      }
+    });
+
+    // Trigger join on Enter key press inside the join input box
+    document.getElementById("room-code-input").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        submitJoinRoom();
+      }
+    });
   </script>
 </body>
 </html>
