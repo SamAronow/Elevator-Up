@@ -6,21 +6,130 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="database.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    .section { margin-bottom: 20px; }
-    .cards { font-size: 24px; }
-    .card-button {
-      margin: 5px;
-      padding: 10px;
-      font-size: 20px;
-      cursor: pointer;
-    }
-  
-    .card-button:disabled {
-      cursor: not-allowed;
-      background-color: #ccc;
-    }
-  </style>
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to bottom, #1e1e2f, #2d2d44);
+    color: white;
+  }
+
+  h1, h2, h3 {
+    color: #f0e68c;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+  }
+
+  .section {
+    margin-bottom: 30px;
+    
+  }
+
+  .cards {
+    font-size: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .card-button {
+    margin: 5px;
+    padding: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    background-color: #f0e68c;
+    color: #1e1e2f;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .card-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+  }
+
+  .card-button:disabled {
+    cursor: not-allowed;
+    background-color: #999;
+    color: #eee;
+  }
+
+  .opponent-block {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 12px;
+    min-width: 160px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-button.myst-card,
+.card-back {
+  background-image: url('Card_pics/back.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  border-radius: 8px;
+  width: 60px;
+  height: 90px;
+  padding: 4px;
+  color: transparent;
+  text-shadow: none;
+}
+
+
+
+  #take-cards-btn {
+    padding: 12px 24px;
+    font-size: 18px;
+    margin-top: 10px;
+    background-color: #f0e68c;
+    color: #1e1e2f;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+  }
+
+  #take-cards-btn:hover {
+    transform: translateY(-1px);
+  }
+
+
+.overlap-container {
+  display: flex;
+  justify-content: center;
+}
+
+.overlap-container .card-button:not(:first-child) {
+  margin-left: -50px;
+}
+
+
+.opponent-flex {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 30px;
+}
+
+.opponent-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 260px;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+
+</style>
+
   
   <script>
 
@@ -145,88 +254,139 @@
     ---------------------------------------------------------------------------------------
     */
 
-    function getEnd() {
-        return new Promise(async (resolve) => {
-            const hand = await read(`/${code}/hands/${player}`);
-            let selected = [];
+  function getEnd() {
+    return new Promise(async (resolve) => {
+        const hand = await read(`/${code}/hands/${player}`);
+        let selected = [];
 
-            const popup = document.createElement("div");
-            popup.id = "popup";
-            popup.style.position = "fixed";
-            popup.style.top = "0";
-            popup.style.left = "0";
-            popup.style.width = "100vw";
-            popup.style.height = "100vh";
-            popup.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-            popup.style.display = "flex";
-            popup.style.flexDirection = "column";
-            popup.style.alignItems = "center";
-            popup.style.justifyContent = "center";
-            popup.style.zIndex = "1000";
+        const popup = document.createElement("div");
+        popup.id = "popup";
+        popup.style.position = "fixed";
+        popup.style.top = "0";
+        popup.style.left = "0";
+        popup.style.width = "100vw";
+        popup.style.height = "100vh";
+        popup.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+        popup.style.display = "flex";
+        popup.style.flexDirection = "column";
+        popup.style.alignItems = "center";
+        popup.style.justifyContent = "center";
+        popup.style.zIndex = "1000";
 
-            popup.innerHTML = `
-                <div style="background:white; padding:20px; border-radius:10px; text-align:center;">
-                    <h3>Select 2 cards for your Ends</h3>
-                    <div id="card-selection" style="margin: 10px;">
-                        ${hand.map((card, i) => 
-                            `<button data-index="${i}" class="end-select">${card}</button>`).join(" ")}
-                    </div>
-                    <button id="confirmEnds" disabled>Confirm</button>
-                    <div id="waitMessage" style="margin-top: 10px;"></div>
-                </div>
-            `;
-            document.body.appendChild(popup);
+        const cardButtonsHtml = hand.map((card, i) => `
+            <button 
+                data-index="${i}" 
+                class="end-select" 
+                style="
+                    width: 80px;
+                    height: 120px;
+                    margin: 5px;
+                    background-image: url('Card_pics/${card}.png');
+                    background-size: contain;
+                    background-repeat: no-repeat;
+                    background-position: center;
+                    border: 2px solid #ccc;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: box-shadow 0.2s, border 0.2s;
+                ">
+            </button>
+        `).join("");
 
-            const buttons = popup.querySelectorAll(".end-select");
-            const confirmBtn = popup.querySelector("#confirmEnds");
-            const waitMessage = popup.querySelector("#waitMessage");
+        popup.innerHTML = `
+        <div style="
+            background: #fff;
+            padding: 30px 20px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            width: 340px;
+            color: #1e1e2f;
+        ">
+            <h3 style="margin-bottom: 20px; color: #222;">Select 2 cards for your Ends</h3>
+            <div id="card-selection" style="display: flex; flex-wrap: wrap; justify-content: center;">
+            ${cardButtonsHtml}
+            </div>
+            <button id="confirmEnds" disabled style="
+            margin-top: 20px;
+            padding: 12px 24px;
+            font-size: 18px;
+            background-color: #1e1e2f;
+            color: #f0e68c;
+            border: none;
+            border-radius: 10px;
+            width: 100%;
+            cursor: pointer;
+            ">Confirm</button>
+            <div id="waitMessage" style="margin-top: 10px; color: #444;"></div>
+        </div>
+        `;
 
-            buttons.forEach(btn => {
-                btn.onclick = () => {
-                    const index = Number(btn.dataset.index);
-                    if (selected.includes(index)) {
-                        selected = selected.filter(i => i !== index);
-                        btn.style.backgroundColor = "";
-                    } else if (selected.length < 2) {
-                        selected.push(index);
-                        btn.style.backgroundColor = "lightgreen";
-                    }
+        document.body.innerHTML = "";  // Remove any setup messages
+        document.body.appendChild(popup);
 
-                    confirmBtn.disabled = selected.length !== 2;
-                };
-            });
 
-            confirmBtn.onclick = async () => {
-                const ends = [hand[selected[0]], hand[selected[1]]];
-                const newHand = hand.filter((_, i) => !selected.includes(i));
+        const buttons = popup.querySelectorAll(".end-select");
+        const confirmBtn = popup.querySelector("#confirmEnds");
+        const waitMessage = popup.querySelector("#waitMessage");
 
-                await write(`/${code}/hands/${player}`, newHand);
-                await write(`/${code}/ends/${player}`, ends);
+        buttons.forEach(btn => {
+            btn.onclick = () => {
+                const index = Number(btn.dataset.index);
+                if (selected.includes(index)) {
+                    selected = selected.filter(i => i !== index);
+                    btn.style.boxShadow = "";
+                    btn.style.border = "2px solid #ccc";
+                } else if (selected.length < 2) {
+                    selected.push(index);
+                    btn.style.boxShadow = "0 0 10px 3px lightgreen";
+                    btn.style.border = "2px solid green";
+                }
 
-                waitMessage.textContent = "Waiting for all players to choose...";
-
-                // Start polling until all players have submitted 2 ends
-                const endsRef = database.ref(`/${code}/ends`);
-                endsRef.on('value', (snapshot) => {
-                    const endsData = snapshot.val() || {};
-                    let allDone = true;
-
-                    for (let i = 1; i <= numPlayers; i++) {
-                        if (!Array.isArray(endsData[i]) || endsData[i].length !== 2) {
-                            allDone = false;
-                            break;
-                        }
-                    }
-
-                    if (allDone) {
-                        popup.remove();
-                        endsRef.off(); // stop listening
-                        resolve();
+                // Reset visuals for unselected buttons
+                buttons.forEach((b, i) => {
+                    if (!selected.includes(i)) {
+                        b.style.boxShadow = "";
+                        b.style.border = "2px solid #ccc";
                     }
                 });
+
+                confirmBtn.disabled = selected.length !== 2;
             };
         });
-    }
+
+        confirmBtn.onclick = async () => {
+            const ends = [hand[selected[0]], hand[selected[1]]];
+            const newHand = hand.filter((_, i) => !selected.includes(i));
+
+            await write(`/${code}/hands/${player}`, newHand);
+            await write(`/${code}/ends/${player}`, ends);
+
+            waitMessage.textContent = "Waiting for all players to choose...";
+
+            // Start polling until all players have submitted 2 ends
+            const endsRef = database.ref(`/${code}/ends`);
+            endsRef.on('value', (snapshot) => {
+                const endsData = snapshot.val() || {};
+                let allDone = true;
+
+                for (let i = 1; i <= numPlayers; i++) {
+                    if (!Array.isArray(endsData[i]) || endsData[i].length !== 2) {
+                        allDone = false;
+                        break;
+                    }
+                }
+
+                if (allDone) {
+                    popup.remove();
+                    endsRef.off(); // stop listening
+                    resolve();
+                }
+            });
+        };
+    });
+}
+
 
 
     /* Set up functionality for winner pop up and play again and delete room options
@@ -260,6 +420,7 @@
 
         const messageText = document.createElement("div");
         messageText.textContent = message;
+        messageText.style.color = "black";
 
         const buttonContainer = document.createElement("div");
         Object.assign(buttonContainer.style, {
@@ -500,8 +661,10 @@
                 const currentPlayerName = players[turn]?.Name || `Player ${turn}`;
                 const displayName = isMyTurn ? "Your" : `${currentPlayerName}'s`;
                 messageBox.innerHTML = `
-                    ${displayName} card played was <strong>${card}</strong><br>
-                    It is <strong style="color:${isLegal ? 'green' : 'red'}">${isLegal ? 'legal' : 'not legal'}</strong>
+                    <span style="color:black;">
+                        ${displayName} card played was <strong>${card}</strong><br>
+                        It is <strong style="color:${isLegal ? 'green' : 'red'}">${isLegal ? 'legal' : 'not legal'}</strong>
+                    </span>
                 `;
 
 
@@ -797,213 +960,209 @@
     ---------------------------------------------------------------------------------------
     */
 
-   async function updateGame() {
-    var [deck, inPlay, hand, ends, mysts, lastMove, lastVal, lastAmt, allPlayers] = await Promise.all([
-        read(`/${code}/deck`),
-        read(`/${code}/inPlay`),
-        read(`/${code}/hands/${player}`),
-        read(`/${code}/ends/${player}`),
-        read(`/${code}/mysts/${player}`),
-        read(`/${code}/lastMove`),
-        read(`/${code}/lastVal`),
-        read(`/${code}/lastAmt`),
-        read(`/${code}/players`)
-    ]);
 
+    async function updateGame() {
+  var [deck, inPlay, hand, ends, mysts, lastMove, lastVal, lastAmt, allPlayers] = await Promise.all([
+    read(`/${code}/deck`),
+    read(`/${code}/inPlay`),
+    read(`/${code}/hands/${player}`),
+    read(`/${code}/ends/${player}`),
+    read(`/${code}/mysts/${player}`),
+    read(`/${code}/lastMove`),
+    read(`/${code}/lastVal`),
+    read(`/${code}/lastAmt`),
+    read(`/${code}/players`)
+  ]);
     if (inPlay === null) inPlay = [];
     if (deck === null)  deck = [];
     if (hand === null) hand = [];
     if (ends === null) ends = [];
     if (mysts === null) mysts = []
+  turn = await read(`/${code}/turn`);
+  const isMyTurn = turn === Number(player);
 
-    turn = await read(`/${code}/turn`);
-
-    const opponents = allPlayers
-        .map((p, idx) => ({ ...p, id: idx }))
-        .filter((p, idx) => p && idx !== Number(player) && idx !== 0);
+  const opponents = allPlayers
+    .map((p, idx) => ({ ...p, id: idx }))
+    .filter(p => p && p.id !== Number(player) && p.id !== 0);
 
 
-    const opponentHTML = await Promise.all(opponents.map(async (p) => {
-    var [h, e, m] = await Promise.all([
-        read(`/${code}/hands/${p.id}`),
-        read(`/${code}/ends/${p.id}`),
-        read(`/${code}/mysts/${p.id}`)
+  const opponentHTML = await Promise.all(opponents.map(async (p) => {
+    var [h, e , m ] = await Promise.all([
+      read(`/${code}/hands/${p.id}`),
+      read(`/${code}/ends/${p.id}`),
+      read(`/${code}/mysts/${p.id}`)
+    ]);
+
+    if (h === null) h = [];
+    if (e === null) e = [];
+    if (m === null) m = [];
+
+    const nameDisplay = turn === p.id
+      ? `<b style="color:green;">${p.Name}</b>`
+      : `${p.Name}`;
+
+    // Hand cards (overlapped)
+    const handDisplay = `
+      <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
+        <span>Hand:</span>
+        <div class="overlap-container">
+          ${h.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+        </div>
+      </div>`;
+
+    // Ends cards (overlapped)
+    const endsDisplay = `
+      <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
+        <span>Ends:</span>
+        <div class="overlap-container">
+          ${e.map(card => `
+            <button class="card-button" style="
+              background-image: url('Card_pics/${card}.png');
+              background-size: contain;
+              background-repeat: no-repeat;
+              background-position: center;
+              width: 60px;
+              height: 90px;
+              border: none;
+              border-radius: 8px;
+              padding: 4px;
+              color: transparent;
+            " disabled></button>
+          `).join("")}
+        </div>
+      </div>`;
+
+    // Mystery cards (overlapped)
+    const mysteryDisplay = `
+      <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
+        <span>Mystery:</span>
+        <div class="overlap-container">
+          ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+        </div>
+      </div>`;
+
+    return `
+      <div class="opponent-block" style="overflow: hidden;">
+        <h3 style="margin-top: 0; margin-bottom: 10px;">${nameDisplay}</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+          ${handDisplay}
+          ${endsDisplay}
+          ${mysteryDisplay}
+        </div>
+      </div>
+    `;
+  }));
+
+
+
+  const youNameDisplay = isMyTurn ? `<b style="color:green;">You</b>` : `You`;
+  const sortedHand = sortCards(hand);
+
+  // Deck display
+  const deckHTML = `
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span>Deck:</span>
+    <div class="overlap-container">
+      ${deck.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+    </div>
+  </div>
+`;
+
+  // In-play display (last 5 visible)
+  const numHidden = Math.max(0, inPlay.length - 5);
+  const visible = inPlay.slice(-5);
+  const playHTML = `
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span>In Play:</span>
+    <div class="overlap-container">
+      ${Array(numHidden).fill().map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+      ${visible.map(card => `
+        <button class="card-button" style="
+          background-image: url('Card_pics/${card}.png');
+          background-size: contain;
+          background-repeat: no-repeat;
+          background-position: center;
+          width: 60px;
+          height: 90px;
+          border: none;
+          border-radius: 8px;
+          padding: 4px;
+          color: transparent;
+        " disabled></button>
+      `).join("")}
+    </div>
+  </div>
+`;
+
+  document.title = isMyTurn ? "Your turn" : "Opponent Turn";
+  if (document.visibilityState !== 'visible' && isMyTurn) {
+    startFlashingTitle("Your Turn!");
+  }
+
+  document.body.innerHTML = `
+    <div class="section opponent-flex">
+      ${opponentHTML.join("")}
+    </div>
+
+    <hr>
+
+<div class="section" style="display: flex; flex-direction: column; gap: px; align-items: center;">
+  <div class="section">
+    ${deckHTML}
+  </div>
+  <div class="section">
+    ${playHTML}
+  </div>
+</div>
+
+    <div class="section">
+      <h2>${youNameDisplay}</h2>
+
+      <div class="cards" id="hand">
+        ${sortedHand.map(card =>
+          `<button class="card-button" data-card="${card}">${card}</button>`
+        ).join("")}
+      </div>
+      <hr>
+
+      <div style="display: flex; gap: 30px; justify-content: center;">
+  <div class="cards" id="ends">
+    ${ends.map(card =>
+      `<button class="card-button end-card" data-card="${card}">${card}</button>`
+    ).join("")}
+  </div>
+  <div class="cards" id="mystery">
+    ${mysts.map(card =>
+      `<button class="card-button myst-card" data-card="${card}"></button>`
+    ).join("")}
+  </div>
+</div>
+    </div>
+  `;
+
+  const canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
+
+  // Check win conditions
+  if (hand.length === 0 && ends.length === 0 && mysts.length === 0) {
+    winner(player);
+  }
+
+  for (const p of opponents) {
+    var [h = [], e = [], m = []] = await Promise.all([
+      read(`/${code}/hands/${p.id}`),
+      read(`/${code}/ends/${p.id}`),
+      read(`/${code}/mysts/${p.id}`)
     ]);
     if (h === null) h = [];
     if (e === null) e = [];
     if (m === null) m = [];
 
-    // Bold and dot if it's their turn
-    const isTurn = turn === p.id;
-    const nameDisplay = isTurn
-        ? `<b style="color:green;">${p.Name}</b>`
-        : `${p.Name}`;
-
-    return `
-        <div class="opponent-block">
-            <h3>${nameDisplay}</h3>
-            <div>Hand: ${"X ".repeat(h.length).trim()}</div>
-            <div>Ends: ${e.join(" ")}</div>
-            <div>Mystery: ${"X ".repeat(m.length).trim()}</div>
-        </div>
-        `;
-    }));
-
-
-    const deck_len = deck.length;
-    const play_len = inPlay.length;
-    const sortedHand = sortCards(hand);
-    const isMyTurn = turn === Number(player);
-
-    const youNameDisplay = isMyTurn
-        ? `<b style="color:green;">You</b>`
-        : `You`;
-
-    document.title = isMyTurn ? "Your turn" : "Opponent Turn";
-    if (document.visibilityState !== 'visible' && isMyTurn) startFlashingTitle("Your Turn!");
-
-    let lastMoveText = "Last played: None";
-    if (lastMove != null) {
-        const extra = (lastMove === "D" || lastMove === "S") ? ` (on ${lastVal})` : "";
-        lastMoveText = `Last played: ${lastMove}${extra}`;
+    if (h.length === 0 && e.length === 0 && m.length === 0) {
+      winner(p.id);
     }
-
-
-    document.body.innerHTML = `
-        <div class="section" style="display:flex; gap: 40px; overflow-x: auto;">
-            ${opponentHTML.join("")}
-        </div>
-
-        <hr>
-
-        <div class="section">
-            <pre>Cards in Deck: ${deck_len}</pre>
-            <pre>Cards in Play: ${play_len}</pre>
-            <h3>Last played:</h3>
-            <pre>${lastMoveText}</pre>
-            <pre>Quantity: ${lastAmt}</pre>
-        </div>
-
-        <div class="section">
-            <h2>${youNameDisplay}</h2>
-            <div class="cards" id="hand">
-                ${sortedHand.map(card => 
-                    `<button class="card-button" data-card="${card}">${card}</button>`
-                ).join(" ")}
-            </div>
-
-            <div class="cards" id="ends">
-                <p>Ends </p>
-                ${(ends).map(card =>
-                    `<button class="card-button end-card" data-card="${card}">${card}</button>`
-                ).join(" ")}
-            </div>
-
-            <div class="cards" id="ends">
-            <p>Mystery </p>
-            ${(mysts).map(card =>
-                `<button class="card-button myst-card" data-card="${card}">X</button>`
-            ).join(" ")}
-        </div>
-    </div>
-
-    <div class="section">
-        <h3 id="turn-status">${isMyTurn ? "Your turn" : "Waiting for opponent..."}</h3>
-    </div>
-`;
-
-
-    canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
-
-    // Check for win condition
-    if ((hand?.length ?? 0) === 0 && (ends?.length ?? 0) === 0 && (mysts?.length ?? 0) === 0) {
-        winner(player);
-    }
-
-    for (let p of opponents) {
-        var [h, e, m] = await Promise.all([
-            read(`/${code}/hands/${p.id}`),
-            read(`/${code}/ends/${p.id}`),
-            read(`/${code}/mysts/${p.id}`)
-        ]);
-
-        if ((h?.length ?? 0) === 0 && (e?.length ?? 0) === 0 && (m?.length ?? 0) === 0) {
-            winner(p.id);
-        }
-    }
+  }
 }
 
-/*
-    function updateHandButtons(enabled, lastVal,deck,hand,ends) {
-        let canPlay = false;
-
-        const handButtons = document.querySelectorAll("#hand .card-button");
-        const endCards = document.querySelectorAll(".end-card");
-        const mystCards = document.querySelectorAll(".myst-card");
-
-        if (hand.length != 0){
-            handButtons.forEach(btn => {
-                const card = btn.dataset.card;
-                const isLegal = legalMove(card, lastVal);
-                if (enabled && isLegal) {
-                    canPlay = true;
-                }
-                btn.disabled = !(enabled && isLegal);
-                btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
-                btn.onclick = (enabled && isLegal) ? () => processClick(card,0) : null;
-            });
-            endCards.forEach(btn => {
-                btn.disabled = true;
-                btn.style.backgroundColor = "#ccc";
-                btn.onclick = null;
-            });
-            mystCards.forEach(btn => {
-                btn.disabled = true;
-                btn.style.backgroundColor = "#ccc";
-                btn.onclick = null;
-            });
-        }
-        else if (ends.length!=0){
-            endCards.forEach(btn => {
-                let card = btn.dataset.card;
-                let isLegal = legalMove(card, lastVal);
-                if (enabled && isLegal) {
-                    canPlay = true;
-                }
-                btn.disabled = !(enabled && isLegal);
-                btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
-                btn.onclick = (enabled && isLegal) ? () => processClick(card,1) : null;
-            });
-            mystCards.forEach(btn => {
-                btn.disabled = true;
-                btn.style.backgroundColor = "#ccc";
-                btn.onclick = null;
-            });
-        }
-        else{
-            mystCards.forEach(btn => {
-                card = btn.dataset.card;
-                canPlay = true;
-                btn.disabled = !(enabled);
-                btn.style.backgroundColor = enabled ? "#fff" : "#ccc";
-                btn.onclick = enabled ? () => processClick(card,2) : null;
-            });
-        }
-
-        // Only append "Take Cards" button if no moves are possible
-        if (enabled && !canPlay) {
-            const takeBtn = document.createElement("button");
-            takeBtn.id = "take-cards-btn";
-            takeBtn.textContent = "Take Cards";
-            takeBtn.onclick = () => takeCards(null);
-
-
-            const handSection = document.getElementById("hand");
-            handSection.appendChild(takeBtn);
-        }
-
-        return canPlay;
-    }*/
 
 
     function updateHandButtons(enabled, lastVal, deck, hand, ends) {
@@ -1017,7 +1176,7 @@
     function updateButtonWithImage(btn, card, isEnabled) {
         btn.disabled = !isEnabled;
         btn.style.backgroundColor = isEnabled ? "#fff" : "#ccc";
-        btn.style.border = isEnabled ? "2px solid #f0e68c" : "2px solid #888";
+        btn.style.border = isEnabled ? "4px solid #f0e68c" : "2px solid #888";
         btn.style.cursor = isEnabled ? "pointer" : "not-allowed";
         btn.style.padding = "4px";
         btn.style.borderRadius = "8px";
@@ -1094,6 +1253,6 @@
   </script>
 </head>
 <body>
-  <h1>Game Setup In Progress...</h1>
+  <h1>Waiting for other players...</h1>
 </body>
 </html>
