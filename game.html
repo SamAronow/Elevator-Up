@@ -725,7 +725,7 @@
 
         const writes = [
             write(`/${code}/deck`, deck),
-            write(`/${code}/inPlay`, []),
+            write(`/${code}/`, []),
             write(`/${code}/turn`, 1),
             write(`/${code}/mysteryPlayed`, false),
             write(`/${code}/lastMove`, null),
@@ -1004,7 +1004,7 @@
     // Hand cards (overlapped)
     const handDisplay = `
       <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
-        <span>Hand:</span>
+        <!--<span>Hand:</span>-->
         <div class="overlap-container">
           ${h.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
         </div>
@@ -1012,8 +1012,8 @@
 
     // Ends cards (overlapped)
     const endsDisplay = `
-      <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
-        <span>Ends:</span>
+      <div style="display: flex; align-items: center; gap: 4px; min-width: 120px;">
+        <!--<span>Ends:</span>-->
         <div class="overlap-container">
           ${e.map(card => `
             <button class="card-button" style="
@@ -1034,8 +1034,8 @@
 
     // Mystery cards (overlapped)
     const mysteryDisplay = `
-      <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
-        <span>Mystery:</span>
+      <div style="display: flex; align-items: center; gap: 4px; min-width: 120px;">
+        <!--<span>Mystery:</span>-->
         <div class="overlap-container">
           ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
         </div>
@@ -1082,8 +1082,8 @@
           background-size: contain;
           background-repeat: no-repeat;
           background-position: center;
-          width: 60px;
-          height: 90px;
+          width: 80px;
+          height: 120px;
           border: none;
           border-radius: 8px;
           padding: 4px;
@@ -1114,7 +1114,6 @@
     ${playHTML}
   </div>
 </div>
-
     <div class="section">
       <h2>${youNameDisplay}</h2>
 
@@ -1180,8 +1179,8 @@
         btn.style.cursor = isEnabled ? "pointer" : "not-allowed";
         btn.style.padding = "4px";
         btn.style.borderRadius = "8px";
-        btn.style.width = "60px";
-        btn.style.height = "90px";
+        btn.style.width = "80px";
+        btn.style.height = "120px";
         btn.style.backgroundImage = `url('Card_pics/${card}.png')`;
         btn.style.backgroundSize = "contain";
         btn.style.backgroundRepeat = "no-repeat";
