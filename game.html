@@ -1068,9 +1068,9 @@
   </div>
 `;
 
-  // In-play display (last 5 visible)
-  const numHidden = Math.max(0, inPlay.length - 5);
-  const visible = inPlay.slice(-5);
+  // In-play display (last 4 visible)
+  const numHidden = Math.max(0, inPlay.length - 4);
+  const visible = inPlay.slice(-4);
   const playHTML = `
   <div style="display: flex; align-items: center; gap: 12px;">
     <span>In Play:</span>
