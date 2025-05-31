@@ -933,7 +933,7 @@
     }
 }
 
-
+/*
     function updateHandButtons(enabled, lastVal,deck,hand,ends) {
         let canPlay = false;
 
@@ -1003,7 +1003,94 @@
         }
 
         return canPlay;
+    }*/
+
+
+    function updateHandButtons(enabled, lastVal, deck, hand, ends) {
+    let canPlay = false;
+
+    const handButtons = document.querySelectorAll("#hand .card-button");
+    const endCards = document.querySelectorAll(".end-card");
+    const mystCards = document.querySelectorAll(".myst-card");
+
+    // Helper to update a button to show a card image and styling
+    function updateButtonWithImage(btn, card, isEnabled) {
+        btn.disabled = !isEnabled;
+        btn.style.backgroundColor = isEnabled ? "#fff" : "#ccc";
+        btn.style.border = isEnabled ? "2px solid #f0e68c" : "2px solid #888";
+        btn.style.cursor = isEnabled ? "pointer" : "not-allowed";
+        btn.style.padding = "4px";
+        btn.style.borderRadius = "8px";
+        btn.style.width = "60px";
+        btn.style.height = "90px";
+        btn.style.backgroundImage = `url('Card_pics/${card}.png')`;
+        btn.style.backgroundSize = "contain";
+        btn.style.backgroundRepeat = "no-repeat";
+        btn.style.backgroundPosition = "center";
+        btn.textContent = "";  // remove text
     }
+
+    if (hand.length != 0) {
+        handButtons.forEach(btn => {
+            const card = btn.dataset.card;
+            const isLegal = legalMove(card, lastVal);
+            if (enabled && isLegal) {
+                canPlay = true;
+            }
+            updateButtonWithImage(btn, card, enabled && isLegal);
+            btn.onclick = (enabled && isLegal) ? () => processClick(card, 0) : null;
+        });
+
+        endCards.forEach(btn => {
+            updateButtonWithImage(btn, btn.dataset.card, false);
+        });
+
+        mystCards.forEach(btn => {
+            updateButtonWithImage(btn, "back", false);
+        });
+
+    } else if (ends.length != 0) {
+        endCards.forEach(btn => {
+            let card = btn.dataset.card;
+            let isLegal = legalMove(card, lastVal);
+            if (enabled && isLegal) {
+                canPlay = true;
+            }
+            updateButtonWithImage(btn, card, enabled && isLegal);
+            btn.onclick = (enabled && isLegal) ? () => processClick(card, 1) : null;
+        });
+
+        mystCards.forEach(btn => {
+            updateButtonWithImage(btn, "back", false);
+        });
+
+    } else {
+        mystCards.forEach(btn => {
+            let card = btn.dataset.card;
+            canPlay = true;
+            updateButtonWithImage(btn, "back", enabled);
+            btn.onclick = enabled ? () => processClick(card, 2) : null;
+        });
+    }
+
+    // Remove any existing Take Cards button before adding a new one
+    const existingTakeBtn = document.getElementById("take-cards-btn");
+    if (existingTakeBtn) existingTakeBtn.remove();
+
+    // Only append "Take Cards" button if no moves are possible
+    if (enabled && !canPlay) {
+        const takeBtn = document.createElement("button");
+        takeBtn.id = "take-cards-btn";
+        takeBtn.textContent = "Take Cards";
+        takeBtn.onclick = () => takeCards(null);
+        const handSection = document.getElementById("hand");
+        handSection.appendChild(takeBtn);
+    }
+
+    return canPlay;
+}
+
+
   </script>
 </head>
 <body>
