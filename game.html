@@ -860,7 +860,7 @@
         : `You`;
 
     document.title = isMyTurn ? "Your turn" : "Opponent Turn";
-    if (document.visibilityState !== 'visible') startFlashingTitle("Your Turn!");
+    if (document.visibilityState !== 'visible' && isMyTurn) startFlashingTitle("Your Turn!");
 
     let lastMoveText = "Last played: None";
     if (lastMove != null) {
