@@ -20,8 +20,8 @@
   }
 
   .section {
-    margin-bottom: 30px;
-    
+    margin-bottom: 5px;
+
   }
 
   .cards {
@@ -82,6 +82,9 @@
 
 
   #take-cards-btn {
+    background: linear-gradient(135deg, #f0e68c, #fff8b0);
+    font-weight: bold;
+    letter-spacing: 0.5px;
     padding: 12px 24px;
     font-size: 18px;
     margin-top: 10px;
@@ -105,7 +108,7 @@
 }
 
 .overlap-container .card-button:not(:first-child) {
-  margin-left: -50px;
+  margin-left: -55px;
 }
 
 
@@ -278,8 +281,8 @@
                 data-index="${i}" 
                 class="end-select" 
                 style="
-                    width: 80px;
-                    height: 120px;
+                    width: 120px;
+                    height: 180px;
                     margin: 5px;
                     background-image: url('Card_pics/${card}.png');
                     background-size: contain;
@@ -300,7 +303,7 @@
             border-radius: 20px;
             text-align: center;
             box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            width: 340px;
+            width: 400px;
             color: #1e1e2f;
         ">
             <h3 style="margin-bottom: 20px; color: #222;">Select 2 cards for your Ends</h3>
@@ -398,128 +401,139 @@
     let otherPlayerChoices = {}; // e.g., {1: {playAgain: true, deleteGame: false}, ...}
 
     async function winner(win) {
-        const message = win == player ? "You won!" : "Opponent won!";
+    players = await read(`/${code}/players`);
+    const winnerName = win == player ? "You" : players[win]?.Name || "Opponent";
+    const message = win == player ? "You won!" : `${winnerName} won!`;
 
-        const winpopup = document.createElement("div");
-        Object.assign(winpopup.style, {
-            position: "fixed", top: "0", left: "0",
-            width: "100vw", height: "100vh",
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex", flexDirection: "column",
-            justifyContent: "center", alignItems: "center",
-            zIndex: "10000"
-        });
+    const winpopup = document.createElement("div");
+    Object.assign(winpopup.style, {
+        position: "fixed", top: "0", left: "0",
+        width: "100vw", height: "100vh",
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        display: "flex", flexDirection: "column",
+        justifyContent: "center", alignItems: "center",
+        zIndex: "10000"
+    });
 
-        const winMessageBox = document.createElement("div");
-        Object.assign(winMessageBox.style, {
-            background: "#fff", padding: "30px",
-            borderRadius: "10px", fontSize: "24px",
-            textAlign: "center", display: "flex",
-            flexDirection: "column", alignItems: "center"
-        });
+    const winMessageBox = document.createElement("div");
+    Object.assign(winMessageBox.style, {
+        background: "#2b2b3a",
+        padding: "30px",
+        border: "2px solid #444",
+        borderRadius: "12px",
+        fontSize: "28px",
+        textAlign: "center",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        color: "#f0e68c",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.3)"
+    });
 
-        const messageText = document.createElement("div");
-        messageText.textContent = message;
-        messageText.style.color = "black";
+    const messageText = document.createElement("div");
+    messageText.innerHTML = win == player
+        ? `<span style="color:lightgreen;">${message}</span>`
+        : `<span style="color:#ff6666;">${message}</span>`;
 
-        const buttonContainer = document.createElement("div");
-        Object.assign(buttonContainer.style, {
-            display: "flex", flexDirection: "column",
-            marginTop: "20px", gap: "10px"
-        });
+    const buttonContainer = document.createElement("div");
+    Object.assign(buttonContainer.style, {
+        display: "flex", flexDirection: "column",
+        marginTop: "20px", gap: "10px"
+    });
 
-        playAgainBtn = document.createElement("button");
-        playAgainBtn.textContent = "Play Again";
-        Object.assign(playAgainBtn.style, {
-            padding: "10px 20px", fontSize: "18px",
-            backgroundColor: "#eee", transition: "background-color 0.3s"
-        });
-        playAgainBtn.onclick = () => chooseOption("playAgain");
+    playAgainBtn = document.createElement("button");
+    playAgainBtn.textContent = "Play Again";
+    Object.assign(playAgainBtn.style, {
+        padding: "10px 20px", fontSize: "18px",
+        backgroundColor: "#eee", transition: "background-color 0.3s",
+        borderRadius: "8px", border: "none", cursor: "pointer"
+    });
+    playAgainBtn.onclick = () => chooseOption("playAgain");
 
-        deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "Delete Room";
-        Object.assign(deleteBtn.style, {
-            padding: "10px 20px", fontSize: "18px",
-            backgroundColor: "#eee", transition: "background-color 0.3s"
-        });
-        deleteBtn.onclick = () => chooseOption("deleteGame");
+    deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete Room";
+    Object.assign(deleteBtn.style, {
+        padding: "10px 20px", fontSize: "18px",
+        backgroundColor: "#eee", transition: "background-color 0.3s",
+        borderRadius: "8px", border: "none", cursor: "pointer"
+    });
+    deleteBtn.onclick = () => chooseOption("deleteGame");
 
-        const statusMessage = document.createElement("div");
-        Object.assign(statusMessage.style, {
-            marginTop: "15px", fontSize: "18px", color: "#333"
-        });
+    const statusMessage = document.createElement("div");
+    Object.assign(statusMessage.style, {
+        marginTop: "15px", fontSize: "18px", color: "#f0e68c"
+    });
 
-        buttonContainer.appendChild(playAgainBtn);
-        buttonContainer.appendChild(deleteBtn);
-        winMessageBox.appendChild(messageText);
-        winMessageBox.appendChild(buttonContainer);
-        winMessageBox.appendChild(statusMessage);
-        winpopup.appendChild(winMessageBox);
-        document.body.appendChild(winpopup);
+    buttonContainer.appendChild(playAgainBtn);
+    buttonContainer.appendChild(deleteBtn);
+    winMessageBox.appendChild(messageText);
+    winMessageBox.appendChild(buttonContainer);
+    winMessageBox.appendChild(statusMessage);
+    winpopup.appendChild(winMessageBox);
+    document.body.appendChild(winpopup);
 
-        // Attach listeners to all players
-        for (let i = 1; i <= numPlayers; i++) {
-            if (i == player) continue;
+    // Attach listeners to all players
+    for (let i = 1; i <= numPlayers; i++) {
+        if (i == player) continue;
 
-            firebase.database().ref(`/${code}/players/${i}`).on('value', snapshot => {
-                otherPlayerChoices[i] = snapshot.val() || {};
-                updateStatus();
-            });
-        }
-
-        // Listen for your own data to refresh button highlights
-        firebase.database().ref(`/${code}/players/${player}`).on('value', snapshot => {
-            const data = snapshot.val() || {};
-            play_again = !!data.playAgain;
-            delete_game = !!data.deleteGame;
-            highlightChoice();
+        firebase.database().ref(`/${code}/players/${i}`).on('value', snapshot => {
+            otherPlayerChoices[i] = snapshot.val() || {};
             updateStatus();
         });
+    }
 
+    // Listen for your own data to refresh button highlights
+    firebase.database().ref(`/${code}/players/${player}`).on('value', snapshot => {
+        const data = snapshot.val() || {};
+        play_again = !!data.playAgain;
+        delete_game = !!data.deleteGame;
+        highlightChoice();
+        updateStatus();
+    });
 
-        function updateStatus() {
-            const allPlayAgain = play_again && Object.values(otherPlayerChoices).every(p => p.playAgain);
-            const allDelete = delete_game && Object.values(otherPlayerChoices).every(p => p.deleteGame);
+    function updateStatus() {
+        const allPlayAgain = play_again && Object.values(otherPlayerChoices).every(p => p.playAgain);
+        const allDelete = delete_game && Object.values(otherPlayerChoices).every(p => p.deleteGame);
 
-            if (allPlayAgain) {
-                playAgain();
-            } else if (allDelete) {
-                deleteGame();
-            } else {
-                const playAgainNames = Object.values(otherPlayerChoices)
-                    .filter(p => p.playAgain)
-                    .map(p => p.Name);
+        if (allPlayAgain) {
+            playAgain();
+        } else if (allDelete) {
+            deleteGame();
+        } else {
+            const playAgainNames = Object.values(otherPlayerChoices)
+                .filter(p => p.playAgain)
+                .map(p => p.Name);
 
-                const deleteNames = Object.values(otherPlayerChoices)
-                    .filter(p => p.deleteGame)
-                    .map(p => p.Name);
+            const deleteNames = Object.values(otherPlayerChoices)
+                .filter(p => p.deleteGame)
+                .map(p => p.Name);
 
-                const playNameText = playAgainNames.join(", ");
-                const deleteNameText = deleteNames.join(", ");
+            const playNameText = playAgainNames.join(", ");
+            const deleteNameText = deleteNames.join(", ");
 
-                if (playAgainNames.length > 0 && deleteNames.length > 0) {
-                    statusMessage.innerHTML = `
-                        ${playNameText} ${playAgainNames.length === 1 ? "wants" : "want"} to play again<br>
-                        ${deleteNameText} ${deleteNames.length === 1 ? "wants" : "want"} to delete room
-                    `;
-                }
-                else if (playAgainNames.length > 0) {
-                    statusMessage.textContent = `${playNameText} ${playAgainNames.length === 1 ? "wants" : "want"} to play again`;
-                } 
-                else if (deleteNames.length > 0){
-                    statusMessage.textContent = `${deleteNameText} ${deleteNames.length === 1 ? "wants" : "want"} to delete room`;
-                }
-                else {
-                    statusMessage.textContent = "Waiting on others...";
-                }
+            if (playAgainNames.length > 0 && deleteNames.length > 0) {
+                statusMessage.innerHTML = `
+                    <span style="color:lightgreen;">${playNameText} ${playAgainNames.length === 1 ? "wants" : "want"} to play again</span><br>
+                    <span style="color:#ff6666;">${deleteNameText} ${deleteNames.length === 1 ? "wants" : "want"} to delete room</span>
+                `;
+            }
+            else if (playAgainNames.length > 0) {
+                statusMessage.innerHTML = `<span style="color:lightgreen;">${playNameText} ${playAgainNames.length === 1 ? "wants" : "want"} to play again</span>`;
+            } 
+            else if (deleteNames.length > 0){
+                statusMessage.innerHTML = `<span style="color:#ff6666;">${deleteNameText} ${deleteNames.length === 1 ? "wants" : "want"} to delete room</span>`;
+            }
+            else {
+                statusMessage.textContent = "Waiting on others...";
             }
         }
-
-        function highlightChoice() {
-            playAgainBtn.style.backgroundColor = play_again ? "#cce5cc" : "#eee";
-            deleteBtn.style.backgroundColor = delete_game ? "#f5cccc" : "#eee";
-        }
     }
+
+    function highlightChoice() {
+        playAgainBtn.style.backgroundColor = play_again ? "#cce5cc" : "#eee";
+        deleteBtn.style.backgroundColor = delete_game ? "#f5cccc" : "#eee";
+    }
+}
 
     async function chooseOption(option) {
         if (option === "playAgain") {
@@ -600,7 +614,6 @@
     initRef.on('value', async (snapshot) => {
         var inval = snapshot.val();
         if (inval === true) {
-            console.log("Game initialized — starting game");
             initializeGame();
         }  
     });
@@ -614,7 +627,6 @@
         // Ensure all players are marked as "Used"
         const allPlayersJoined = players && players.every(p => p && p.Used);
         if (!allPlayersJoined) {
-            console.log("Waiting for all players to join...");
             return;
         }
 
@@ -646,58 +658,83 @@
                 const oldPopup = document.getElementById("popup");
                 if (oldPopup) oldPopup.remove();
 
+
                 const popup = document.createElement("div");
-                popup.id = "popup";
-                popup.style = `
-                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                    background-color: rgba(0, 0, 0, 0.5); display: flex;
-                    justify-content: center; align-items: center; z-index: 1000;
-                `;
+popup.id = "popup";
+popup.style = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5); display: flex;
+    justify-content: center; align-items: center; z-index: 1000;
+`;
 
-                const messageBox = document.createElement("div");
-                messageBox.style = "background:#fff; padding:30px; border-radius:8px; text-align:center; font-size:20px";
-                
-                players = await read(`/${code}/players`);
-                const currentPlayerName = players[turn]?.Name || `Player ${turn}`;
-                const displayName = isMyTurn ? "Your" : `${currentPlayerName}'s`;
-                messageBox.innerHTML = `
-                    <span style="color:black;">
-                        ${displayName} card played was <strong>${card}</strong><br>
-                        It is <strong style="color:${isLegal ? 'green' : 'red'}">${isLegal ? 'legal' : 'not legal'}</strong>
-                    </span>
-                `;
+const messageBox = document.createElement("div");
+messageBox.style.background = "#2b2b3a"; // dark background, matches select number popup
+messageBox.style.padding = "25px";
+messageBox.style.border = "2px solid #444";
+messageBox.style.borderRadius = "12px";
+messageBox.style.color = "#f0e68c"; // light yellow text
+messageBox.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+messageBox.style.textAlign = "center";
+messageBox.style.fontSize = "20px";
 
+players = await read(`/${code}/players`);
+const currentPlayerName = players[turn]?.Name || `Player ${turn}`;
+const displayName = isMyTurn ? "Your" : `${currentPlayerName}'s`;
+messageBox.innerHTML = `
+    <span>
+        ${displayName} card played was <strong>${card}</strong><br>
+        It is <strong style="color:${isLegal ? 'lightgreen' : '#ff6666'}">${isLegal ? 'legal' : 'not legal'}</strong>
+    </span>
+`;
 
-                popup.appendChild(messageBox);
-                document.body.appendChild(popup);
+popup.appendChild(messageBox);
+document.body.appendChild(popup);
 
-                setTimeout(() => {
-                    if (isMyTurn) {
-                        const actionContainer = document.createElement("div");
-                        actionContainer.style.marginTop = "20px";
-                        if (isLegal) {
-                            const playBtn = document.createElement("button");
-                            playBtn.textContent = "Play Card";
-                            playBtn.onclick = () => {
-                                popup.remove();
-                                endTurn(card, 1, 2);
-                            };
-                            actionContainer.appendChild(playBtn);
-                        } else {
-                            const takeBtn = document.createElement("button");
-                            takeBtn.textContent = "Take Cards";
-                            takeBtn.onclick = () => {
-                                popup.remove();
-                                takeCards(card);
-                            };
-                            actionContainer.appendChild(takeBtn);
-                        }
-                        messageBox.appendChild(actionContainer);
-                    } else {
-                        messageBox.innerHTML += `<br><br>Waiting for opponent to ${isLegal ? "play" : "take cards"}.`;
-                    }
-                }, 1200);
-            });
+setTimeout(() => {
+    if (isMyTurn) {
+        const actionContainer = document.createElement("div");
+        actionContainer.style.marginTop = "20px";
+        if (isLegal) {
+            const playBtn = document.createElement("button");
+            playBtn.textContent = "Play Card";
+            playBtn.onclick = () => {
+                popup.remove();
+                endTurn(card, 1, 2);
+            };
+            playBtn.style.background = "#f0e68c";
+            playBtn.style.color = "#2b2b3a";
+            playBtn.style.border = "none";
+            playBtn.style.borderRadius = "8px";
+            playBtn.style.padding = "10px 20px";
+            playBtn.style.fontWeight = "bold";
+            playBtn.style.cursor = "pointer";
+            playBtn.style.fontSize = "16px";
+            actionContainer.appendChild(playBtn);
+        } else {
+            const takeBtn = document.createElement("button");
+            takeBtn.textContent = "Take Cards";
+            takeBtn.onclick = () => {
+                popup.remove();
+                takeCards(card);
+            };
+            takeBtn.style.background = "#f0e68c";
+            takeBtn.style.color = "#2b2b3a";
+            takeBtn.style.border = "none";
+            takeBtn.style.borderRadius = "8px";
+            takeBtn.style.padding = "10px 20px";
+            takeBtn.style.fontWeight = "bold";
+            takeBtn.style.cursor = "pointer";
+            takeBtn.style.fontSize = "16px";
+            actionContainer.appendChild(takeBtn);
+        }
+        messageBox.appendChild(actionContainer);
+    } else {
+        messageBox.innerHTML += `<br><br><span style="color:#f0e68c;">Waiting for opponent to ${isLegal ? "play" : "take cards"}.</span>`;
+    }
+}, 1200);
+
+            }
+        );
 
             await write(`/${code}/gameStarted`, true);
             //updateGame();
@@ -772,44 +809,60 @@
             return;
         }
 
-        // Create overlay
-        const overlay = document.createElement("div");
-        overlay.className = "popup-overlay";
-        overlay.style.position = "fixed";
-        overlay.style.top = "0";
-        overlay.style.left = "0";
-        overlay.style.width = "100%";
-        overlay.style.height = "100%";
-        overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-        overlay.style.zIndex = "9998";
+    // Create overlay
+const overlay = document.createElement("div");
+overlay.className = "popup-overlay";
+overlay.style.position = "fixed";
+overlay.style.top = "0";
+overlay.style.left = "0";
+overlay.style.width = "100%";
+overlay.style.height = "100%";
+overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+overlay.style.zIndex = "9998";
 
-        // Create popup box
-        const popup = document.createElement("div");
-        popup.className = "popup";
-        popup.style.position = "fixed";
-        popup.style.top = "50%";
-        popup.style.left = "50%";
-        popup.style.transform = "translate(-50%, -50%)";
-        popup.style.background = "white";
-        popup.style.padding = "20px";
-        popup.style.border = "2px solid black";
-        popup.style.zIndex = "9999";
-        popup.innerHTML = `<h3>Select how many '${card}' to play:</h3>`;
+// Create popup box
+const popup = document.createElement("div");
+popup.className = "popup";
+popup.style.position = "fixed";
+popup.style.top = "50%";
+popup.style.left = "50%";
+popup.style.transform = "translate(-50%, -50%)";
+popup.style.background = "#2b2b3a";  // dark background
+popup.style.padding = "25px";
+popup.style.border = "2px solid #444";
+popup.style.borderRadius = "12px";
+popup.style.color = "#f0e68c";  // light yellow text
+popup.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+popup.style.zIndex = "9999";
+popup.innerHTML = `<h3 style="margin-bottom: 15px;">Select how many ${card}'s to play:</h3>
+  <div id="popup-btn-container" style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;"></div>`;
 
-        for (let i = 1; i <= count; i++) {
-            const btn = document.createElement("button");
-            btn.textContent = i;
-            btn.onclick = () => {
-            document.body.removeChild(overlay);
-            document.body.removeChild(popup);
-            endTurn(card, i,stage);
-            };
-            popup.appendChild(btn);
-        }
+const btnContainer = popup.querySelector("#popup-btn-container");
+
+for (let i = 1; i <= count; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.style.margin = "5px";
+    btn.style.padding = "10px 16px";
+    btn.style.fontSize = "16px";
+    btn.style.borderRadius = "8px";
+    btn.style.border = "none";
+    btn.style.backgroundColor = "#f0e68c";
+    btn.style.color = "#2b2b3a";
+    btn.style.cursor = "pointer";
+    btn.style.fontWeight = "bold";
+    btn.onclick = () => {
+        document.body.removeChild(overlay);
+        document.body.removeChild(popup);
+        endTurn(card, i, stage);
+    };
+    btnContainer.appendChild(btn);
+}
+
+document.body.appendChild(overlay);
+document.body.appendChild(popup);
 
 
-        document.body.appendChild(overlay);
-        document.body.appendChild(popup);
     }
 
     async function endTurn(card,amt,stage) {   
@@ -985,73 +1038,76 @@
     .map((p, idx) => ({ ...p, id: idx }))
     .filter(p => p && p.id !== Number(player) && p.id !== 0);
 
+    
 
   const opponentHTML = await Promise.all(opponents.map(async (p) => {
-    var [h, e , m ] = await Promise.all([
-      read(`/${code}/hands/${p.id}`),
-      read(`/${code}/ends/${p.id}`),
-      read(`/${code}/mysts/${p.id}`)
-    ]);
+  var [h, e, m] = await Promise.all([
+    read(`/${code}/hands/${p.id}`),
+    read(`/${code}/ends/${p.id}`),
+    read(`/${code}/mysts/${p.id}`)
+  ]);
 
-    if (h === null) h = [];
-    if (e === null) e = [];
-    if (m === null) m = [];
+  if (h === null) h = [];
+  if (e === null) e = [];
+  if (m === null) m = [];
 
-    const nameDisplay = turn === p.id
-      ? `<b style="color:green;">${p.Name}</b>`
-      : `${p.Name}`;
+  const nameDisplay = turn === p.id
+    ? `<b style="color:green;">${p.Name}</b>`
+    : `${p.Name}`;
 
-    // Hand cards (overlapped)
-    const handDisplay = `
-      <div style="display: flex; align-items: center; gap: 8px; min-width: 120px;">
-        <!--<span>Hand:</span>-->
-        <div class="overlap-container">
-          ${h.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+  const getOverlapWidth = (n) => 60 + 5 * (Math.max(n, 1) - 1) + 25;
+  const handWidth = getOverlapWidth(h.length);
+  const endsWidth = getOverlapWidth(e.length);
+  const mystWidth = getOverlapWidth(m.length);
+  const maxWidth = Math.max(handWidth, endsWidth, mystWidth);
+
+  // Use the same horizontal gap between all columns
+  // Reduce vertical gap between name and labels/cards
+  return `
+    <div class="opponent-block" style="overflow: hidden;">
+      <h3 style="margin-top: 0; margin-bottom: 4px;">${nameDisplay}</h3>
+      <div style="display: flex; justify-content: center; gap: 16px; align-items: flex-start;">
+        <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
+          <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Hand</div>
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <div class="overlap-container">
+              ${h.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+            </div>
+          </div>
         </div>
-      </div>`;
-
-    // Ends cards (overlapped)
-    const endsDisplay = `
-      <div style="display: flex; align-items: center; gap: 4px; min-width: 120px;">
-        <!--<span>Ends:</span>-->
-        <div class="overlap-container">
-          ${e.map(card => `
-            <button class="card-button" style="
-              background-image: url('Card_pics/${card}.png');
-              background-size: contain;
-              background-repeat: no-repeat;
-              background-position: center;
-              width: 60px;
-              height: 90px;
-              border: none;
-              border-radius: 8px;
-              padding: 4px;
-              color: transparent;
-            " disabled></button>
-          `).join("")}
+        <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
+          <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Ends</div>
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <div class="overlap-container">
+              ${e.map(card => `
+                <button class="card-button" style="
+                  background-image: url('Card_pics/${card}.png');
+                  background-size: contain;
+                  background-repeat: no-repeat;
+                  background-position: center;
+                  width: 60px;
+                  height: 90px;
+                  border: none;
+                  border-radius: 8px;
+                  padding: 4px;
+                  color: transparent;
+                " disabled></button>
+              `).join("")}
+            </div>
+          </div>
         </div>
-      </div>`;
-
-    // Mystery cards (overlapped)
-    const mysteryDisplay = `
-      <div style="display: flex; align-items: center; gap: 4px; min-width: 120px;">
-        <!--<span>Mystery:</span>-->
-        <div class="overlap-container">
-          ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
-        </div>
-      </div>`;
-
-    return `
-      <div class="opponent-block" style="overflow: hidden;">
-        <h3 style="margin-top: 0; margin-bottom: 10px;">${nameDisplay}</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-          ${handDisplay}
-          ${endsDisplay}
-          ${mysteryDisplay}
+        <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
+          <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Mystery</div>
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <div class="overlap-container">
+              ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+            </div>
+          </div>
         </div>
       </div>
-    `;
-  }));
+    </div>
+  `;
+}));
 
 
 
@@ -1059,24 +1115,25 @@
   const sortedHand = sortCards(hand);
 
   // Deck display
-  const deckHTML = `
+  const deckHTML = deck.length > 0 ? `
   <div style="display: flex; align-items: center; gap: 12px;">
     <span>Deck:</span>
     <div class="overlap-container">
       ${deck.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
     </div>
   </div>
-`;
+` : "";
 
   // In-play display (last 4 visible)
   const numHidden = Math.max(0, inPlay.length - 4);
   const visible = inPlay.slice(-4);
   const playHTML = `
-  <div style="display: flex; align-items: center; gap: 12px;">
+  <div style="display: flex; align-items: center; gap: 0px;">
     <span>In Play:</span>
     <div class="overlap-container">
-      ${Array(numHidden).fill().map(() => `<button class="card-button card-back" disabled></button>`).join("")}
-      ${visible.map(card => `
+        ${Array(numHidden).fill().map(() =>
+        `<button class="card-button card-back" style="width:80px; height:120px;" disabled></button>`
+        ).join("")}      ${visible.map(card => `
         <button class="card-button" style="
           background-image: url('Card_pics/${card}.png');
           background-size: contain;
@@ -1106,7 +1163,7 @@
 
     <hr>
 
-<div class="section" style="display: flex; flex-direction: column; gap: px; align-items: center;">
+<div class="section" style="display: flex; flex-direction: column; align-items: center;">
   <div class="section">
     ${deckHTML}
   </div>
@@ -1114,8 +1171,8 @@
     ${playHTML}
   </div>
 </div>
-    <div class="section">
-      <h2>${youNameDisplay}</h2>
+    <div class="section";>
+      <h3>${youNameDisplay}</h3>
 
       <div class="cards" id="hand">
         ${sortedHand.map(card =>
@@ -1125,18 +1182,18 @@
       <hr>
 
       <div style="display: flex; gap: 30px; justify-content: center;">
-  <div class="cards" id="ends">
-    ${ends.map(card =>
-      `<button class="card-button end-card" data-card="${card}">${card}</button>`
-    ).join("")}
-  </div>
-  <div class="cards" id="mystery">
-    ${mysts.map(card =>
-      `<button class="card-button myst-card" data-card="${card}"></button>`
-    ).join("")}
-  </div>
+        <div class="cards" id="ends">
+            ${ends.map(card =>
+            `<button class="card-button end-card" data-card="${card}">${card}</button>`
+            ).join("")}
+        </div>
+        <div class="cards" id="mystery">
+            ${mysts.map(card =>
+            `<button class="card-button myst-card" data-card="${card}"></button>`
+            ).join("")}
+        </div>
+        </div>
 </div>
-    </div>
   `;
 
   const canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
@@ -1235,15 +1292,28 @@
     const existingTakeBtn = document.getElementById("take-cards-btn");
     if (existingTakeBtn) existingTakeBtn.remove();
 
-    // Only append "Take Cards" button if no moves are possible
-    if (enabled && !canPlay) {
-        const takeBtn = document.createElement("button");
-        takeBtn.id = "take-cards-btn";
-        takeBtn.textContent = "Take Cards";
-        takeBtn.onclick = () => takeCards(null);
-        const handSection = document.getElementById("hand");
-        handSection.appendChild(takeBtn);
-    }
+if (enabled && !canPlay) {
+    const takeBtn = document.createElement("button");
+    takeBtn.id = "take-cards-btn";
+    takeBtn.innerHTML = "Take Cards";
+    takeBtn.style.background = "linear-gradient(135deg, #f0e68c 60%, #fff8b0 100%)";
+    takeBtn.style.boxShadow = "0 2px 6px rgba(0,0,0,0.18)";
+    takeBtn.style.borderRadius = "12px";
+    takeBtn.style.padding = "12px 32px";
+    takeBtn.style.fontSize = "20px";
+    takeBtn.style.outline = "none";
+    takeBtn.style.marginTop = "12px";
+    takeBtn.style.display = "block";
+    takeBtn.style.marginLeft = "auto";
+    takeBtn.style.marginRight = "auto";
+    takeBtn.onmouseover = () => takeBtn.style.transform = "scale(1.02)";
+    takeBtn.onmouseout = () => takeBtn.style.transform = "scale(1)";
+    takeBtn.onclick = () => takeCards(null);
+    const handSection = document.getElementById("hand");
+    handSection.parentNode.insertBefore(takeBtn, handSection.nextSibling);
+}
+
+
 
     return canPlay;
 }
