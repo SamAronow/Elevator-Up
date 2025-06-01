@@ -451,7 +451,7 @@
     playAgainBtn.onclick = () => chooseOption("playAgain");
 
     deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Delete Room";
+    deleteBtn.textContent = "End Game";
     Object.assign(deleteBtn.style, {
         padding: "10px 20px", fontSize: "18px",
         backgroundColor: "#eee", transition: "background-color 0.3s",
@@ -625,10 +625,11 @@
         numPlayers = await read(`/${code}/playerCount`);
 
         // Ensure all players are marked as "Used"
-        const allPlayersJoined = players && players.every(p => p && p.Used);
-        if (!allPlayersJoined) {
-            return;
-        }
+        const allPlayersJoined = players && players.every(p => p && p.Used && p.Name);
+if (!allPlayersJoined) {
+    return;
+}
+
 
         const alreadyInit = await read(`/${code}/initialized`);
         if (alreadyInit === true) {
