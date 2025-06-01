@@ -170,10 +170,32 @@
 .popup-overlay {
     animation: fadeIn 0.2s ease-out forwards;
 }
+.popup-overlay.closing {
+    animation: fadeOut 0.2s ease-in forwards;
+}
+
+.modal-content.closing {
+    animation: slideDownFadeOut 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+}
+
+@keyframes slideDownFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
 
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 @keyframes slideUpFadeIn {
@@ -376,26 +398,47 @@ function formatRoomCode(input) {
 }
 
     function openPlayerCountPopup() {
-      document.getElementById("player-count-popup").style.display = "flex";
-      localStorage.setItem("openPopup", "playerCount");
-    }
+    const popup = document.getElementById("player-count-popup");
+    popup.style.display = "flex";
+    popup.classList.remove('closing');
+    const modalContent = popup.querySelector('.modal-content');
+    if (modalContent) modalContent.classList.remove('closing');
+    localStorage.setItem("openPopup", "playerCount");
+}
+
 
     function openJoinPopup() {
-      document.getElementById("join-popup").style.display = "flex";
-      const input = document.getElementById("room-code-input");
-      input.value = '';
-      input.focus();
-      localStorage.setItem("openPopup", "join");
-    }
+    const popup = document.getElementById("join-popup");
+    popup.style.display = "flex";
+    popup.classList.remove('closing');
+    const modalContent = popup.querySelector('.modal-content');
+    if (modalContent) modalContent.classList.remove('closing');
+    const input = document.getElementById("room-code-input");
+    input.value = '';
+    input.focus();
+    localStorage.setItem("openPopup", "join");
+}
+
 
     function closePopups(event) {
-      if (event.target.classList.contains('popup-overlay')) {
-        document.getElementById("player-count-popup").style.display = "none";
-        document.getElementById("join-popup").style.display = "none";
+    if (event.target.classList.contains('popup-overlay')) {
+        const popups = document.querySelectorAll('.popup-overlay');
+        popups.forEach(popup => {
+            // Add closing classes
+            popup.classList.add('closing');
+            const modalContent = popup.querySelector('.modal-content');
+            if (modalContent) modalContent.classList.add('closing');
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                popup.style.display = "none";
+                popup.classList.remove('closing');
+                if (modalContent) modalContent.classList.remove('closing');
+            }, 300); // Match this to your longest animation duration
+        });
         localStorage.removeItem("openPopup");
-        localStorage.removeItem("roomCodeValue");
-      }
     }
+}
 
     async function createRoom(playerCount) {
       localStorage.removeItem("openPopup");
@@ -531,6 +574,20 @@ window.addEventListener("load", () => {
         submitJoinRoom();
       }
     });
+    // Update your button click handlers like this:
+document.querySelector('.btn-close').onclick = function() {
+    const popup = document.getElementById("player-count-popup");
+    popup.classList.add('closing');
+    const modalContent = popup.querySelector('.modal-content');
+    if (modalContent) modalContent.classList.add('closing');
+    
+    setTimeout(() => {
+        popup.style.display = "none";
+        popup.classList.remove('closing');
+        if (modalContent) modalContent.classList.remove('closing');
+        localStorage.removeItem("openPopup");
+    }, 300);
+};
   </script>
 </body>
 </html>
