@@ -1,53 +1,11 @@
- /* Add these to your existing game.css */
 
-/* Enhance Bootstrap integration */
-.btn-primary {
-  background-color: var(--accent-color) !important;
-  border-color: var(--accent-color) !important;
-  color: var(--dark-bg) !important;
+ body {
+  margin: 0;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #232343; /* solid color, no lines */
+  color: white;
 }
-
-.btn-secondary {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-.btn-warning {
-  background: linear-gradient(135deg, var(--accent-color), #fff8b0) !important;
-  border: none !important;
-  color: var(--dark-bg) !important;
-  font-weight: bold !important;
-}
-
-/* Better card transitions */
-.card-button {
-  transition: all 0.2s ease !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .opponent-block {
-    padding: 10px !important;
-  }
-  
-  .card-button {
-    width: 60px !important;
-    height: 90px !important;
-  }
-}
-
-/* Fix overlap container spacing */
-.overlap-container {
-  padding: 5px 0;
-}
-
-  body {
-    margin: 0;
-    padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(to bottom, #1e1e2f, #2d2d44);
-    color: white;
-  }
 
   h1, h2, h3 {
     color: #f0e68c;
@@ -81,7 +39,7 @@
   }
 
   .card-button:hover:not(:disabled) {
-    transform: translateY(-2px);
+    transform: translateY(-10px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
   }
 
@@ -165,18 +123,17 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-.card-flying {
-    position: absolute;
-    z-index: 10000;
-    width: 80px;
-    height: 120px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    border-radius: 8px;
-    pointer-events: none;
-    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
-                opacity 0.4s ease-out;
-    transform-origin: center;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+
+#card-popup {
+  animation: fadeInOut 1.2s ease-in-out forwards;
 }
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: scale(0.9); }
+  15% { opacity: 1; transform: scale(1); }
+  85% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); }
+}
+
+
+

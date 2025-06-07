@@ -86,7 +86,6 @@ function formatRoomCode(input) {
         write(`/${code}/playerCount`, playerCount)
       ]);
 
-console.log("hi")
     await setUpDatabase(playerCount, code);
     
 
@@ -105,7 +104,7 @@ console.log("hi")
     }
     async function setUpDatabase(playerCount,code){
             const baseDeck = ["D", "P"];
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 2; i++) {
                 for (let j = 2; j <= 10; j++) baseDeck.push(j.toString());
                 baseDeck.push("L", "N", "S");
             }
