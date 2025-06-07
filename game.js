@@ -1,151 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Elevator Up</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="database.js"></script>
-  <style>
-  body {
-    margin: 0;
-    padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(to bottom, #1e1e2f, #2d2d44);
-    color: white;
-  }
 
-  h1, h2, h3 {
-    color: #f0e68c;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
-  }
-
-  .section {
-    margin-bottom: 5px;
-
-  }
-
-  .cards {
-    font-size: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-  }
-
-  .card-button {
-    margin: 5px;
-    padding: 10px;
-    font-size: 20px;
-    cursor: pointer;
-    border: none;
-    border-radius: 10px;
-    background-color: #f0e68c;
-    color: #1e1e2f;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .card-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
-  }
-
-  .card-button:disabled {
-    cursor: not-allowed;
-    background-color: #999;
-    color: #eee;
-  }
-
-  .opponent-block {
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 15px;
-    border-radius: 12px;
-    min-width: 160px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  }
-
-  .card-button.myst-card,
-.card-back {
-  background-image: url('Card_pics/back.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  border: none;
-  border-radius: 8px;
-  width: 60px;
-  height: 90px;
-  padding: 4px;
-  color: transparent;
-  text-shadow: none;
-}
-
-
-
-  #take-cards-btn {
-    background: linear-gradient(135deg, #f0e68c, #fff8b0);
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    padding: 12px 24px;
-    font-size: 18px;
-    margin-top: 10px;
-    background-color: #f0e68c;
-    color: #1e1e2f;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s;
-  }
-
-  #take-cards-btn:hover {
-    transform: translateY(-1px);
-  }
-
-
-.overlap-container {
-  display: flex;
-  justify-content: center;
-}
-
-.overlap-container .card-button:not(:first-child) {
-  margin-left: -55px;
-}
-
-
-.opponent-flex {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 30px;
-}
-
-.opponent-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1 1 260px;
-  background-color: rgba(255, 255, 255, 0.05);
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
-
-#card-popup {
-  animation: fadeInOut 1.3s ease-in-out forwards;
-}
-
-@keyframes fadeInOut {
-  0% { opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-
-</style>
-
-  
-  <script>
 
     /*get data about game
     ---------------------------------------------------------------------------------------
@@ -156,7 +9,6 @@
     var numPlayers
     var playerName
     var players
-    let gameStarted
 
     if (player==1){
         var opponent=2
@@ -236,6 +88,60 @@
     /* Set up functionality for flashing tab title
     ---------------------------------------------------------------------------------------
     */
+
+
+    /* Add this function to create flying card animation */
+    async function showPlayedCardsAnimation() {
+        const [inPlay, lastAmt] = await Promise.all([
+            read(`/${code}/inPlay`),
+            read(`/${code}/lastAmt`)
+        ]);
+        
+        if (!inPlay || inPlay.length === 0) return;
+        
+        // Get the last played cards (up to 4)
+        const playedCards = inPlay.slice(-Math.min(4, lastAmt || 1));
+        
+        // Create a container for the animation
+        const animContainer = document.createElement('div');
+        animContainer.style.position = 'fixed';
+        animContainer.style.top = '0';
+        animContainer.style.left = '0';
+        animContainer.style.width = '100vw';
+        animContainer.style.height = '100vh';
+        animContainer.style.display = 'flex';
+        animContainer.style.justifyContent = 'center';
+        animContainer.style.alignItems = 'center';
+        animContainer.style.zIndex = '10000';
+        animContainer.style.pointerEvents = 'none';
+        document.body.appendChild(animContainer);
+        
+        // Create card elements
+        playedCards.forEach((card, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card-flying';
+            cardEl.style.backgroundImage = `url('Card_pics/${card}.png')`;
+            cardEl.style.transform = `translateY(-100vh) rotate(${(index - playedCards.length/2) * 5}deg)`;
+            cardEl.style.opacity = '0';
+            animContainer.appendChild(cardEl);
+            
+            // Animate the card
+            setTimeout(() => {
+                cardEl.style.transform = `translateY(0) rotate(${(index - playedCards.length/2) * 5}deg)`;
+                cardEl.style.opacity = '1';
+            }, 50 * index);
+        });
+        
+        // Remove after animation
+        setTimeout(() => {
+            animContainer.style.opacity = '0';
+            setTimeout(() => {
+                document.body.removeChild(animContainer);
+            }, 500);
+        }, 1000);
+    }
+
+
 
     let flashInterval;
     let flashing = false;
@@ -585,7 +491,6 @@
                 removeNode(`/${code}/hands`),
                 removeNode(`/${code}/inPlay`),
                 removeNode(`/${code}/lastAmt`),
-                removeNode(`/${code}/lastNum`),
                 removeNode(`/${code}/lastMove`),
                 removeNode(`/${code}/lastVal`),
                 removeNode(`/${code}/mysteryPlayed`),
@@ -621,6 +526,7 @@
     ---------------------------------------------------------------------------------------
     */
 
+    window.onload = initializeGame;
 
     var initRef = database.ref(`/${code}/initialized`);
     initRef.on('value', async (snapshot) => {
@@ -629,26 +535,140 @@
             initializeGame();
         }  
     });
-     window.onload = initializeGame;
-
 
     async function initializeGame() {
-        
         players = await read(`/${code}/players`);
         playerName= players[player]?.Name
-        gameStarted = await read(`/${code}/gameStarted`);
+        const gameStarted = await read(`/${code}/gameStarted`);
         numPlayers = await read(`/${code}/playerCount`);
 
         // Ensure all players are marked as "Used"
         const allPlayersJoined = players && players.every(p => p && p.Used && p.Name);
-        if (!allPlayersJoined) {
+if (!allPlayersJoined) {
+    return;
+}
+
+
+        const alreadyInit = await read(`/${code}/initialized`);
+        if (alreadyInit === true) {
+            if (!gameStarted) {
+                write(`/${code}/players/${player}/playAgain`, false);
+                write(`/${code}/players/${player}/deleteGame`, false);
+                await getEnd();
+            }
+
+            // Listen for turn changes
+            const turnRef = database.ref(`/${code}/turn`);
+            //turnRef.on('value', () => updateGame());
+            turnRef.on('value', async (snapshot) => {
+                const newTurn = snapshot.val();
+                if (newTurn !== turn) {
+                    await showPlayedCardsAnimation();
+                    turn = newTurn;
+                    updateGame();
+                }
+            });
+
+            // Listen for mystery plays
+            const mystRef = database.ref(`/${code}/mysteryPlayed`);
+            mystRef.on('value', async (snapshot) => {
+                let turn = await read(`/${code}/turn`);
+                let lastVal = await read(`/${code}/lastVal`);
+                var isMyTurn = turn === Number(player);
+
+                let data = snapshot.val();
+                if (!data || !data.played) return;
+
+                let card = data.played;
+                let isLegal = legalMove(card, lastVal);
+
+                const oldPopup = document.getElementById("popup");
+                if (oldPopup) oldPopup.remove();
+
+
+                const popup = document.createElement("div");
+popup.id = "popup";
+popup.style = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5); display: flex;
+    justify-content: center; align-items: center; z-index: 1000;
+`;
+
+const messageBox = document.createElement("div");
+messageBox.style.background = "#2b2b3a"; // dark background, matches select number popup
+messageBox.style.padding = "25px";
+messageBox.style.border = "2px solid #444";
+messageBox.style.borderRadius = "12px";
+messageBox.style.color = "#f0e68c"; // light yellow text
+messageBox.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
+messageBox.style.textAlign = "center";
+messageBox.style.fontSize = "20px";
+
+players = await read(`/${code}/players`);
+const currentPlayerName = players[turn]?.Name || `Player ${turn}`;
+const displayName = isMyTurn ? "Your" : `${currentPlayerName}'s`;
+messageBox.innerHTML = `
+    <span>
+        ${displayName} card played was <strong>${card}</strong><br>
+        It is <strong style="color:${isLegal ? 'lightgreen' : '#ff6666'}">${isLegal ? 'legal' : 'not legal'}</strong>
+    </span>
+`;
+
+popup.appendChild(messageBox);
+document.body.appendChild(popup);
+
+setTimeout(() => {
+    if (isMyTurn) {
+        const actionContainer = document.createElement("div");
+        actionContainer.style.marginTop = "20px";
+        if (isLegal) {
+            const playBtn = document.createElement("button");
+            playBtn.textContent = "Play Card";
+            playBtn.onclick = () => {
+                popup.remove();
+                endTurn(card, 1, 2);
+            };
+            playBtn.style.background = "#f0e68c";
+            playBtn.style.color = "#2b2b3a";
+            playBtn.style.border = "none";
+            playBtn.style.borderRadius = "8px";
+            playBtn.style.padding = "10px 20px";
+            playBtn.style.fontWeight = "bold";
+            playBtn.style.cursor = "pointer";
+            playBtn.style.fontSize = "16px";
+            actionContainer.appendChild(playBtn);
+        } else {
+            const takeBtn = document.createElement("button");
+            takeBtn.textContent = "Take Cards";
+            takeBtn.onclick = () => {
+                popup.remove();
+                takeCards(card);
+            };
+            takeBtn.style.background = "#f0e68c";
+            takeBtn.style.color = "#2b2b3a";
+            takeBtn.style.border = "none";
+            takeBtn.style.borderRadius = "8px";
+            takeBtn.style.padding = "10px 20px";
+            takeBtn.style.fontWeight = "bold";
+            takeBtn.style.cursor = "pointer";
+            takeBtn.style.fontSize = "16px";
+            actionContainer.appendChild(takeBtn);
+        }
+        messageBox.appendChild(actionContainer);
+    } else {
+        messageBox.innerHTML += `<br><br><span style="color:#f0e68c;">Waiting for opponent to ${isLegal ? "play" : "take cards"}.</span>`;
+    }
+}, 1200);
+
+            }
+        );
+
+            await write(`/${code}/gameStarted`, true);
+            //updateGame();
             return;
         }
 
-        const alreadyInit = await read(`/${code}/initialized`);
-
-        if (!alreadyInit){
-            // --- Game not yet initialized, so initialize it now ---
+        // --- Game not yet initialized, so initialize it now ---
         const baseDeck = ["D", "P"];
         for (let i = 0; i < 4; i++) {
             for (let j = 2; j <= 10; j++) baseDeck.push(j.toString());
@@ -672,6 +692,9 @@
             write(`/${code}/inPlay`, []),
             write(`/${code}/turn`, 1),
             write(`/${code}/mysteryPlayed`, false),
+            write(`/${code}/lastMove`, null),
+            write(`/${code}/lastVal`, null),
+            write(`/${code}/lastAmt`, null),
             write(`/${code}/resetDone`, false),
         ];
 
@@ -684,146 +707,6 @@
         await Promise.all(writes);
 
         await write(`/${code}/initialized`, true)
-        return
-        }
-        
-        if (alreadyInit) {
-
-            if (!gameStarted) {
-                write(`/${code}/players/${player}/playAgain`, false);
-                write(`/${code}/players/${player}/deleteGame`, false);
-                await getEnd();
-            }
-
-            // Listen for turn changes
-            // Replace the current turnRef listener with this:
-            const turnRef = database.ref(`/${code}/turn`);
-            turnRef.on('value', async (snapshot) => {
-                if (snapshot.val() === null || !gameStarted) return; // Ignore null values
-                console.log("u",snapshot.val())
-                updateGame(true);
-            });
-            
-
-
-            const animRef = database.ref(`/${code}/showAnimation`);
-            animRef.on('value', async (snapshot) => {
-                 if (snapshot.val() === null || !gameStarted) return;
-                console.log("a",snapshot.val())
-                const data = snapshot.val();
-                if (!data || !data.show || !data.card || !data.amt) return;
-  
-                await showPlayedCardsAnimation(data.card, data.amt);
-
-                setTimeout(await write(`/${code}/showAnimation`, { show: false }),1000)
-            });
-
-
-
-            // Listen for mystery plays
-            const mystRef = database.ref(`/${code}/mysteryPlayed`);
-            mystRef.on('value', async (snapshot) => {
-                if (snapshot.val() === null || !gameStarted) return;
-                console.log("m",snapshot.val())
-                let turn = await read(`/${code}/turn`);
-                let lastVal = await read(`/${code}/lastVal`);
-                var isMyTurn = turn === Number(player);
-
-                let data = snapshot.val();
-                if (!data || !data.played) return;
-
-                let card = data.played;
-                let isLegal = legalMove(card, lastVal);
-
-                const oldPopup = document.getElementById("popup");
-                if (oldPopup) oldPopup.remove();
-
-
-                const popup = document.createElement("div");
-            popup.id = "popup";
-            popup.style = `
-                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                background-color: rgba(0, 0, 0, 0.5); display: flex;
-                justify-content: center; align-items: center; z-index: 1000;
-            `;
-
-            const messageBox = document.createElement("div");
-            messageBox.style.background = "#2b2b3a"; // dark background, matches select number popup
-            messageBox.style.padding = "25px";
-            messageBox.style.border = "2px solid #444";
-            messageBox.style.borderRadius = "12px";
-            messageBox.style.color = "#f0e68c"; // light yellow text
-            messageBox.style.boxShadow = "0 6px 18px rgba(0,0,0,0.3)";
-            messageBox.style.textAlign = "center";
-            messageBox.style.fontSize = "20px";
-
-            players = await read(`/${code}/players`);
-            const currentPlayerName = players[turn]?.Name || `Player ${turn}`;
-            const displayName = isMyTurn ? "Your" : `${currentPlayerName}'s`;
-            messageBox.innerHTML = `
-                <span>
-                    ${displayName} card played was <strong>${card}</strong><br>
-                    It is <strong style="color:${isLegal ? 'lightgreen' : '#ff6666'}">${isLegal ? 'legal' : 'not legal'}</strong>
-                </span>
-            `;
-
-            popup.appendChild(messageBox);
-            document.body.appendChild(popup);
-
-            setTimeout(() => {
-                if (isMyTurn) {
-                    const actionContainer = document.createElement("div");
-                    actionContainer.style.marginTop = "20px";
-                    if (isLegal) {
-                        const playBtn = document.createElement("button");
-                        playBtn.textContent = "Play Card";
-                        playBtn.onclick = () => {
-                            popup.remove();
-                            endTurn(card, 1, 2);
-                        };
-                        playBtn.style.background = "#f0e68c";
-                        playBtn.style.color = "#2b2b3a";
-                        playBtn.style.border = "none";
-                        playBtn.style.borderRadius = "8px";
-                        playBtn.style.padding = "10px 20px";
-                        playBtn.style.fontWeight = "bold";
-                        playBtn.style.cursor = "pointer";
-                        playBtn.style.fontSize = "16px";
-                        actionContainer.appendChild(playBtn);
-                    } else {
-                        const takeBtn = document.createElement("button");
-                        takeBtn.textContent = "Take Cards";
-                        takeBtn.onclick = () => {
-                            popup.remove();
-                            takeCards(card);
-                        };
-                        takeBtn.style.background = "#f0e68c";
-                        takeBtn.style.color = "#2b2b3a";
-                        takeBtn.style.border = "none";
-                        takeBtn.style.borderRadius = "8px";
-                        takeBtn.style.padding = "10px 20px";
-                        takeBtn.style.fontWeight = "bold";
-                        takeBtn.style.cursor = "pointer";
-                        takeBtn.style.fontSize = "16px";
-                        actionContainer.appendChild(takeBtn);
-                    }
-                    messageBox.appendChild(actionContainer);
-                } else {
-                    messageBox.innerHTML += `<br><br><span style="color:#f0e68c;">Waiting for opponent to ${isLegal ? "play" : "take cards"}.</span>`;
-                }
-            }, 1200);
-
-                        }
-            );
-
-            await write(`/${code}/gameStarted`, true);
-            gameStarted=true
-            console.log("calling updateGame")
-            updateGame(false);
-            return;
-        }
-
-        
     }
 
 
@@ -910,11 +793,6 @@ document.body.appendChild(popup);
     }
 
     async function endTurn(card,amt,stage) {   
-        await write(`/${code}/showAnimation`, {
-            show: true,
-            card: card,
-            amt: amt
-        });
         var [deck,hand,end_cards,myst_cards,lastMove,inPlay,prevAmt] = await Promise.all([
                 read(`/${code}/deck`),
                 read(`/${code}/hands/${player}`),
@@ -924,7 +802,6 @@ document.body.appendChild(popup);
                 read(`/${code}/inPlay`),
                 read(`/${code}/lastAmt`),
         ]);
-        write(`/${code}/lastNum`,amt);
 
 
         if (card == 'N') {
@@ -1062,457 +939,233 @@ document.body.appendChild(popup);
     /* Set up the Displays
     ---------------------------------------------------------------------------------------
     */
-   async function showPlayedCardsAnimation(card, amt = 1) {
-  if (!card || amt <= 0) return;
-
-  return new Promise(resolve => {
-    const container = document.createElement("div");
-    container.id = "card-popup-container";
-    container.style.position = "fixed";
-    container.style.top = "50%";
-    container.style.left = "50%";
-    container.style.transform = "translate(-50%, -50%)";
-    container.style.zIndex = "9999";
-    container.style.display = "flex";
-    container.style.gap = "20px";
-    container.style.opacity = "0";
-    container.style.transition = "opacity 0.3s ease-in-out";
-
-    for (let i = 0; i < amt; i++) {
-      const cardImg = document.createElement("div");
-      cardImg.style.width = "120px";
-      cardImg.style.height = "180px";
-      cardImg.style.backgroundImage = `url('Card_pics/${card}.png')`;
-      cardImg.style.backgroundSize = "contain";
-      cardImg.style.backgroundRepeat = "no-repeat";
-      cardImg.style.backgroundPosition = "center";
-      cardImg.style.borderRadius = "12px";
-      cardImg.style.boxShadow = "0 8px 24px rgba(0,0,0,0.6)";
-      container.appendChild(cardImg);
-    }
-
-    document.body.appendChild(container);
-
-    // Trigger fade-in
-    requestAnimationFrame(() => {
-      container.style.opacity = "1";
-    });
-
-    // Wait, then fade-out and remove
-    setTimeout(() => {
-      container.style.opacity = "0";
-
-      setTimeout(() => {
-        container.remove();
-        resolve(); // Resolve after the animation completes
-      }, 300); // fade-out time
-    }, 1000); // visible duration
-  });
-}
 
 
-
-
-twice=false
-    async function updateGame(change) { 
-        console.log("updating")
-        if (!twice){
-            twice=true
-            //return
-        }
-        twice=false
-  var [deck, inPlay, hand, ends, mysts, lastMove, lastVal, lastAmt, lastNum,allPlayers] = await Promise.all([
-    read(`/${code}/deck`),
-    read(`/${code}/inPlay`),
-    read(`/${code}/hands/${player}`),
-    read(`/${code}/ends/${player}`),
-    read(`/${code}/mysts/${player}`),
-    read(`/${code}/lastMove`),
-    read(`/${code}/lastVal`),
-    read(`/${code}/lastAmt`),
-    read(`/${code}/lastNum`),
-    read(`/${code}/players`)
-  ]);
-
+async function updateGame() {
+    var [deck, inPlay, hand, ends, mysts, lastMove, lastVal, lastAmt, allPlayers] = await Promise.all([
+        read(`/${code}/deck`),
+        read(`/${code}/inPlay`),
+        read(`/${code}/hands/${player}`),
+        read(`/${code}/ends/${player}`),
+        read(`/${code}/mysts/${player}`),
+        read(`/${code}/lastMove`),
+        read(`/${code}/lastVal`),
+        read(`/${code}/lastAmt`),
+        read(`/${code}/players`)
+    ]);
+    
+    // Initialize null values
     if (inPlay === null) inPlay = [];
-    if (deck === null)  deck = [];
+    if (deck === null) deck = [];
     if (hand === null) hand = [];
     if (ends === null) ends = [];
-    if (mysts === null) mysts = []
+    if (mysts === null) mysts = [];
+    
     turn = await read(`/${code}/turn`);
-  const isMyTurn = turn === Number(player);
-
-
-  const opponents = allPlayers
-    .map((p, idx) => ({ ...p, id: idx }))
-    .filter(p => p && p.id !== Number(player) && p.id !== 0);
-
+    const isMyTurn = turn === Number(player);
     
-
-  const opponentHTML = await Promise.all(opponents.map(async (p) => {
-  var [h, e, m] = await Promise.all([
-    read(`/${code}/hands/${p.id}`),
-    read(`/${code}/ends/${p.id}`),
-    read(`/${code}/mysts/${p.id}`)
-  ]);
-
-  if (h === null) h = [];
-  if (e === null) e = [];
-  if (m === null) m = [];
-
-  const nameDisplay = turn === p.id
-    ? `<b style="color:green;">${p.Name}</b>`
-    : `${p.Name}`;
-
-  const getOverlapWidth = (n) => 60 + 5 * (Math.max(n, 1) - 1) + 25;
-  const handWidth = getOverlapWidth(h.length);
-  const endsWidth = getOverlapWidth(e.length);
-  const mystWidth = getOverlapWidth(m.length);
-  const maxWidth = Math.max(handWidth, endsWidth, mystWidth);
-
-  // Use the same horizontal gap between all columns
-  // Reduce vertical gap between name and labels/cards
-  return `
-    <div class="opponent-block" style="overflow: hidden;">
-      <h3 style="margin-top: 0; margin-bottom: 4px;">${nameDisplay}</h3>
-      <div style="display: flex; justify-content: center; gap: 16px; align-items: flex-start;">
-        <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
-          <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Hand</div>
-          <div style="display: flex; align-items: center; justify-content: center;">
-            <div class="overlap-container">
-              ${h.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+    // Process opponents data
+    const opponents = allPlayers
+        .map((p, idx) => ({ ...p, id: idx }))
+        .filter(p => p && p.id !== Number(player) && p.id !== 0);
+    
+    // Build opponents HTML
+    const opponentHTML = await Promise.all(opponents.map(async (p) => {
+        var [h = [], e = [], m = []] = await Promise.all([
+            read(`/${code}/hands/${p.id}`),
+            read(`/${code}/ends/${p.id}`),
+            read(`/${code}/mysts/${p.id}`)
+        ]);
+        
+        const isCurrentTurn = turn === p.id;
+        const nameClass = isCurrentTurn ? "current-turn" : "";
+        
+        return `
+        <div class="col-md-${opponents.length > 2 ? '4' : '6'} mb-4">
+            <div class="opponent-block h-100">
+                <h4 class="${nameClass} mb-3">${p.Name}</h4>
+                <div class="row g-2">
+                    <div class="col-4">
+                        <div class="card-label">Hand</div>
+                        <div class="overlap-container justify-content-center">
+                            ${h.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card-label">Ends</div>
+                        <div class="overlap-container justify-content-center">
+                            ${e.map(card => `
+                                <button class="card-button" style="background-image: url('Card_pics/${card}.png')" disabled></button>
+                            `).join("")}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card-label">Mystery</div>
+                        <div class="overlap-container justify-content-center">
+                            ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-        <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
-          <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Ends</div>
-          <div style="display: flex; align-items: center; justify-content: center;">
+        `;
+    }));
+    
+    // Player display
+    const youNameDisplay = isMyTurn ? `<span class="current-turn">You</span>` : `You`;
+    const sortedHand = sortCards(hand);
+    
+    // Deck display
+    const deckHTML = deck.length > 0 ? `
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <span class="card-label">Deck:</span>
             <div class="overlap-container">
-              ${e.map(card => `
-                <button class="card-button" style="
-                  background-image: url('Card_pics/${card}.png');
-                  background-size: contain;
-                  background-repeat: no-repeat;
-                  background-position: center;
-                  width: 60px;
-                  height: 90px;
-                  border: none;
-                  border-radius: 8px;
-                  padding: 4px;
-                  color: transparent;
-                " disabled></button>
-              `).join("")}
+                ${deck.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
             </div>
-          </div>
         </div>
-        <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
-          <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Mystery</div>
-          <div style="display: flex; align-items: center; justify-content: center;">
+    ` : "";
+    
+    // In-play display (last 4 visible)
+    const numHidden = Math.max(0, inPlay.length - 4);
+    const visible = inPlay.slice(-4);
+    const playHTML = `
+        <div class="d-flex align-items-center gap-3">
+            <span class="card-label">In Play:</span>
             <div class="overlap-container">
-              ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
+                ${Array(numHidden).fill().map(() =>
+                    `<button class="card-button card-back" disabled></button>`
+                ).join("")}
+                ${visible.map(card => `
+                    <button class="card-button" style="background-image: url('Card_pics/${card}.png')" disabled></button>
+                `).join("")}
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  `;
-}));
-
-
-
-  const youNameDisplay = isMyTurn ? `<b style="color:green;">You</b>` : `You`;
-  const sortedHand = sortCards(hand);
-
-  // Deck display
-  const deckHTML = deck.length > 0 ? `
-  <div style="display: flex; align-items: center; gap: 12px;">
-    <span>Deck:</span>
-    <div class="overlap-container">
-      ${deck.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
-    </div>
-  </div>
-` : "";
-/*
-  if (lastNum!==null){
-    console.log(inPlay)
-    for (i=0; i<lastNum; i++){
-      inPlay.splice(hand.indexOf(lastMove), 1);
+    `;
+    
+    // Update page title and flashing
+    document.title = isMyTurn ? "Your turn" : "Opponent Turn";
+    if (document.visibilityState !== 'visible' && isMyTurn) {
+        startFlashingTitle("Your Turn!");
     }
     
-    console.log("\n")
-    console.log(inPlay)
-  }*/
-  // In-play display (last 4 visible)
-  let numHidden = Math.max(0, inPlay.length - 4);
-  let visible = inPlay.slice(-4);
-  let playHTML = `
-  <div style="display: flex; align-items: center; gap: 0px;">
-    <span>In Play:</span>
-    <div class="overlap-container">
-        ${Array(numHidden).fill().map(() =>
-        `<button class="card-button card-back" style="width:80px; height:120px;" disabled></button>`
-        ).join("")}      ${visible.map(card => `
-        <button class="card-button" style="
-          background-image: url('Card_pics/${card}.png');
-          background-size: contain;
-          background-repeat: no-repeat;
-          background-position: center;
-          width: 80px;
-          height: 120px;
-          border: none;
-          border-radius: 8px;
-          padding: 4px;
-          color: transparent;
-        " disabled></button>
-      `).join("")}
-    </div>
-  </div>
-`;
-
-  document.title = isMyTurn ? "Your turn" : "Opponent Turn";
-  if (document.visibilityState !== 'visible' && isMyTurn) {
-    startFlashingTitle("Your Turn!");
-  }
-
-  document.body.innerHTML = `
-    <div class="section opponent-flex">
-      ${opponentHTML.join("")}
-    </div>
-
-    <hr>
-
-<div class="section" style="display: flex; flex-direction: column; align-items: center;">
-  <div class="section">
-    ${deckHTML}
-  </div>
-  <div class="section">
-    ${playHTML}
-  </div>
-</div>
-    <div class="section";>
-      <h3>${youNameDisplay}</h3>
-
-      <div class="cards" id="hand">
-        ${sortedHand.map(card =>
-          `<button class="card-button" data-card="${card}"></button>`
-        ).join("")}
-      </div>
-      <hr>
-
-      <div style="display: flex; gap: 30px; justify-content: center;">
-        <div class="cards" id="ends">
-            ${ends.map(card =>
-            `<button class="card-button end-card" data-card="${card}"></button>`
-            ).join("")}
-        </div>
-        <div class="cards" id="mystery">
-            ${mysts.map(card =>
-            `<button class="card-button myst-card" data-card="${card}"></button>`
-            ).join("")}
-        </div>
-        </div>
-</div>
-  `;
-/*
-  if (lastMove !==null && change){
-        console.log(change)
-        const canPlay = updateHandButtons(false, lastVal, deck, hand, ends);
-        await showPlayedCardsAnimation(lastMove,lastNum);
+    // Update DOM with Bootstrap structure
+    document.getElementById("opponents-container").innerHTML = opponentHTML.join("");
+    document.getElementById("deck-area").innerHTML = deckHTML;
+    document.getElementById("play-area").innerHTML = playHTML;
+    document.getElementById("player-name-display").innerHTML = youNameDisplay;
+    
+    // Update hand, ends, and mystery cards
+    document.getElementById("hand").innerHTML = sortedHand.map(card =>
+        `<button class="card-button" data-card="${card}"></button>`
+    ).join("");
+    
+    document.getElementById("ends").innerHTML = ends.map(card =>
+        `<button class="card-button end-card" data-card="${card}"></button>`
+    ).join("");
+    
+    document.getElementById("mystery").innerHTML = mysts.map(card =>
+        `<button class="card-button myst-card" data-card="${card}"></button>`
+    ).join("");
+    
+    // Update button states
+    const canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
+    
+    // Check win conditions
+    if (hand.length === 0 && ends.length === 0 && mysts.length === 0) {
+        winner(player);
     }
-    inPlay = await read(`/${code}/inPlay`);
-    if (inPlay === null) inPlay = [];
-       numHidden = Math.max(0, inPlay.length - 4);
-   visible = inPlay.slice(-4);
-   playHTML = `
-  <div style="display: flex; align-items: center; gap: 0px;">
-    <span>In Play:</span>
-    <div class="overlap-container">
-        ${Array(numHidden).fill().map(() =>
-        `<button class="card-button card-back" style="width:80px; height:120px;" disabled></button>`
-        ).join("")}      ${visible.map(card => `
-        <button class="card-button" style="
-          background-image: url('Card_pics/${card}.png');
-          background-size: contain;
-          background-repeat: no-repeat;
-          background-position: center;
-          width: 80px;
-          height: 120px;
-          border: none;
-          border-radius: 8px;
-          padding: 4px;
-          color: transparent;
-        " disabled></button>
-      `).join("")}
-    </div>
-  </div>
-`;
- document.body.innerHTML = `
-    <div class="section opponent-flex">
-      ${opponentHTML.join("")}
-    </div>
-
-    <hr>
-
-<div class="section" style="display: flex; flex-direction: column; align-items: center;">
-  <div class="section">
-    ${deckHTML}
-  </div>
-  <div class="section">
-    ${playHTML}
-  </div>
-</div>
-    <div class="section";>
-      <h3>${youNameDisplay}</h3>
-
-      <div class="cards" id="hand">
-        ${sortedHand.map(card =>
-          `<button class="card-button" data-card="${card}">${card}</button>`
-        ).join("")}
-      </div>
-      <hr>
-
-      <div style="display: flex; gap: 30px; justify-content: center;">
-        <div class="cards" id="ends">
-            ${ends.map(card =>
-            `<button class="card-button end-card" data-card="${card}">${card}</button>`
-            ).join("")}
-        </div>
-        <div class="cards" id="mystery">
-            ${mysts.map(card =>
-            `<button class="card-button myst-card" data-card="${card}"></button>`
-            ).join("")}
-        </div>
-        </div>
-</div>
-  `;
-  */
-
- const canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
-
-  // Check win conditions
-  if (hand.length === 0 && ends.length === 0 && mysts.length === 0) {
-    winner(player);
-  }
-
-  for (const p of opponents) {
-    var [h = [], e = [], m = []] = await Promise.all([
-      read(`/${code}/hands/${p.id}`),
-      read(`/${code}/ends/${p.id}`),
-      read(`/${code}/mysts/${p.id}`)
-    ]);
-    if (h === null) h = [];
-    if (e === null) e = [];
-    if (m === null) m = [];
-
-    if (h.length === 0 && e.length === 0 && m.length === 0) {
-      winner(p.id);
+    
+    for (const p of opponents) {
+        var [h = [], e = [], m = []] = await Promise.all([
+            read(`/${code}/hands/${p.id}`),
+            read(`/${code}/ends/${p.id}`),
+            read(`/${code}/mysts/${p.id}`)
+        ]);
+        
+        if (h.length === 0 && e.length === 0 && m.length === 0) {
+            winner(p.id);
+        }
     }
-  }
 }
 
-
-
-    function updateHandButtons(enabled, lastVal, deck, hand, ends) {
+function updateHandButtons(enabled, lastVal, deck, hand, ends) {
     let canPlay = false;
-
-    const handButtons = document.querySelectorAll("#hand .card-button");
-    const endCards = document.querySelectorAll(".end-card");
-    const mystCards = document.querySelectorAll(".myst-card");
-
-    // Helper to update a button to show a card image and styling
-    function updateButtonWithImage(btn, card, isEnabled) {
-        btn.disabled = !isEnabled;
-        btn.style.backgroundColor = isEnabled ? "#fff" : "#ccc";
-        btn.style.border = isEnabled ? "4px solid #f0e68c" : "2px solid #888";
-        btn.style.cursor = isEnabled ? "pointer" : "not-allowed";
-        btn.style.padding = "4px";
-        btn.style.borderRadius = "8px";
-        btn.style.width = "80px";
-        btn.style.height = "120px";
+    
+    // Helper function to update card button appearance
+    const updateCardButton = (btn, card, isEnabled) => {
+        const isLegal = legalMove(card, lastVal);
+        const active = enabled && isLegal;
+        
         btn.style.backgroundImage = `url('Card_pics/${card}.png')`;
-        btn.style.backgroundSize = "contain";
-        btn.style.backgroundRepeat = "no-repeat";
-        btn.style.backgroundPosition = "center";
-        btn.textContent = "";  // remove text
-    }
-
-    if (hand.length != 0) {
-        handButtons.forEach(btn => {
-            const card = btn.dataset.card;
-            const isLegal = legalMove(card, lastVal);
-            if (enabled && isLegal) {
-                canPlay = true;
-            }
-            updateButtonWithImage(btn, card, enabled && isLegal);
-            btn.onclick = (enabled && isLegal) ? () => processClick(card, 0) : null;
-        });
-
-        endCards.forEach(btn => {
-            updateButtonWithImage(btn, btn.dataset.card, false);
-        });
-
-        mystCards.forEach(btn => {
-            updateButtonWithImage(btn, "back", false);
-        });
-
-    } else if (ends.length != 0) {
-        endCards.forEach(btn => {
-            let card = btn.dataset.card;
-            let isLegal = legalMove(card, lastVal);
-            if (enabled && isLegal) {
-                canPlay = true;
-            }
-            updateButtonWithImage(btn, card, enabled && isLegal);
-            btn.onclick = (enabled && isLegal) ? () => processClick(card, 1) : null;
-        });
-
-        mystCards.forEach(btn => {
-            updateButtonWithImage(btn, "back", false);
-        });
-
-    } else {
-        mystCards.forEach(btn => {
-            let card = btn.dataset.card;
+        btn.disabled = !active;
+        btn.classList.toggle('btn-primary', active);
+        btn.classList.toggle('btn-secondary', !active);
+        
+        if (active) {
+            btn.style.transform = 'scale(1)';
+            btn.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.4)';
+            btn.onmouseenter = () => {
+                btn.style.transform = 'scale(1.05)';
+                btn.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.5)';
+            };
+            btn.onmouseleave = () => {
+                btn.style.transform = 'scale(1)';
+                btn.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.4)';
+            };
             canPlay = true;
-            updateButtonWithImage(btn, "back", enabled);
-            btn.onclick = enabled ? () => processClick(card, 2) : null;
-        });
+        } else {
+            btn.onmouseenter = null;
+            btn.onmouseleave = null;
+        }
+    };
+    
+    // Update hand cards
+    const handButtons = document.querySelectorAll("#hand .card-button");
+    handButtons.forEach(btn => {
+        const card = btn.dataset.card;
+        updateCardButton(btn, card, enabled);
+        btn.onclick = enabled && legalMove(card, lastVal) ? () => processClick(card, 0) : null;
+    });
+    
+    // Update end cards
+    const endButtons = document.querySelectorAll(".end-card");
+    endButtons.forEach(btn => {
+        const card = btn.dataset.card;
+        const active = hand.length === 0 && enabled && legalMove(card, lastVal);
+        updateCardButton(btn, card, active);
+        btn.onclick = active ? () => processClick(card, 1) : null;
+    });
+    
+    // Update mystery cards
+    const mystButtons = document.querySelectorAll(".myst-card");
+    mystButtons.forEach(btn => {
+        const card = btn.dataset.card;
+        const active = hand.length === 0 && ends.length === 0 && enabled;
+        btn.style.backgroundImage = "url('Card_pics/back.png')";
+        btn.disabled = !active;
+        btn.classList.toggle('btn-primary', active);
+        btn.classList.toggle('btn-secondary', !active);
+        
+        if (active) {
+            canPlay = true;
+            btn.onclick = () => processClick(card, 2);
+        } else {
+            btn.onclick = null;
+        }
+    });
+    
+    // Update Take Cards button
+    const takeContainer = document.getElementById("take-cards-container");
+    takeContainer.innerHTML = '';
+    
+    if (enabled && !canPlay) {
+        const takeBtn = document.createElement("button");
+        takeBtn.id = "take-cards-btn";
+        takeBtn.className = "btn btn-warning btn-lg mt-3";
+        takeBtn.textContent = "Take Cards";
+        takeBtn.onclick = () => takeCards(null);
+        takeContainer.appendChild(takeBtn);
     }
-
-    // Remove any existing Take Cards button before adding a new one
-    const existingTakeBtn = document.getElementById("take-cards-btn");
-    if (existingTakeBtn) existingTakeBtn.remove();
-
-if (enabled && !canPlay) {
-    const takeBtn = document.createElement("button");
-    takeBtn.id = "take-cards-btn";
-    takeBtn.innerHTML = "Take Cards";
-    takeBtn.style.background = "linear-gradient(135deg, #f0e68c 60%, #fff8b0 100%)";
-    takeBtn.style.boxShadow = "0 2px 6px rgba(0,0,0,0.18)";
-    takeBtn.style.borderRadius = "12px";
-    takeBtn.style.padding = "12px 32px";
-    takeBtn.style.fontSize = "20px";
-    takeBtn.style.outline = "none";
-    takeBtn.style.marginTop = "12px";
-    takeBtn.style.display = "block";
-    takeBtn.style.marginLeft = "auto";
-    takeBtn.style.marginRight = "auto";
-    takeBtn.onmouseover = () => takeBtn.style.transform = "scale(1.02)";
-    takeBtn.onmouseout = () => takeBtn.style.transform = "scale(1)";
-    takeBtn.onclick = () => takeCards(null);
-    const handSection = document.getElementById("hand");
-    handSection.parentNode.insertBefore(takeBtn, handSection.nextSibling);
-}
-
-
-
+    
     return canPlay;
 }
-
-
-  </script>
-</head>
-<body>
-  <h1>Waiting for other players...</h1>
-</body>
-</html>

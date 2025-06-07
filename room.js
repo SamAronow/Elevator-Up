@@ -120,7 +120,7 @@ function showRejoinButton(roomCode) {
         try {
             const snapshot = await firebase.database().ref(`/${roomCode}/players/${playerNum}/Used`).once('value');
             if (snapshot.exists() && snapshot.val() === true) {
-                window.location.href = `game.html?player=${playerNum}&room=${roomCode}`;
+                window.location.href = `game-orig.html?player=${playerNum}&room=${roomCode}`;
             } else {
                 rejoinContainer.remove();
                 localStorage.removeItem('inGame');
@@ -153,7 +153,7 @@ async function selectPlayer(num) {
     localStorage.setItem("player", num);
     localStorage.setItem("playerName", name.trim());
     
-    window.location.href = `game.html?player=${num}&room=${roomCode}`;
+    window.location.href = `game-orig.html?player=${num}&room=${roomCode}`;
 }
 
 
@@ -212,3 +212,6 @@ async function selectPlayer(num) {
         if (modalContent) modalContent.classList.remove("closing");
       }, 300);
     }
+ 
+
+            

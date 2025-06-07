@@ -1,0 +1,182 @@
+ /* Add these to your existing game.css */
+
+/* Enhance Bootstrap integration */
+.btn-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: var(--dark-bg) !important;
+}
+
+.btn-secondary {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, var(--accent-color), #fff8b0) !important;
+  border: none !important;
+  color: var(--dark-bg) !important;
+  font-weight: bold !important;
+}
+
+/* Better card transitions */
+.card-button {
+  transition: all 0.2s ease !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .opponent-block {
+    padding: 10px !important;
+  }
+  
+  .card-button {
+    width: 60px !important;
+    height: 90px !important;
+  }
+}
+
+/* Fix overlap container spacing */
+.overlap-container {
+  padding: 5px 0;
+}
+
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to bottom, #1e1e2f, #2d2d44);
+    color: white;
+  }
+
+  h1, h2, h3 {
+    color: #f0e68c;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+  }
+
+  .section {
+    margin-bottom: 5px;
+
+  }
+
+  .cards {
+    font-size: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .card-button {
+    margin: 5px;
+    padding: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    border: none;
+    border-radius: 10px;
+    background-color: #f0e68c;
+    color: #1e1e2f;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .card-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+  }
+
+  .card-button:disabled {
+    cursor: not-allowed;
+    background-color: #999;
+    color: #eee;
+  }
+
+  .opponent-block {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 12px;
+    min-width: 160px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-button.myst-card,
+.card-back {
+  background-image: url('Card_pics/back.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  border-radius: 8px;
+  width: 60px;
+  height: 90px;
+  padding: 4px;
+  color: transparent;
+  text-shadow: none;
+}
+
+
+
+  #take-cards-btn {
+    background: linear-gradient(135deg, #f0e68c, #fff8b0);
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    padding: 12px 24px;
+    font-size: 18px;
+    margin-top: 10px;
+    background-color: #f0e68c;
+    color: #1e1e2f;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+  }
+
+  #take-cards-btn:hover {
+    transform: translateY(-1px);
+  }
+
+
+.overlap-container {
+  display: flex;
+  justify-content: center;
+}
+
+.overlap-container .card-button:not(:first-child) {
+  margin-left: -55px;
+}
+
+
+.opponent-flex {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 30px;
+}
+
+.opponent-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 260px;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.card-flying {
+    position: absolute;
+    z-index: 10000;
+    width: 80px;
+    height: 120px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 8px;
+    pointer-events: none;
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), 
+                opacity 0.4s ease-out;
+    transform-origin: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
