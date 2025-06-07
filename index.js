@@ -86,8 +86,9 @@ function formatRoomCode(input) {
         write(`/${code}/playerCount`, playerCount)
       ]);
 
-
+console.log("hi")
     await setUpDatabase(playerCount, code);
+    
 
       window.location.href = `room.html?room=${code}`;
     }
