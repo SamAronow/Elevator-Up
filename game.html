@@ -160,7 +160,7 @@
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background-color: #f0e68c;
+  background-color: #f0e68c; /* Default yellow */
   color: #1e1e2f;
   border: none;
   display: flex;
@@ -180,13 +180,22 @@
   height: 36px;
 }
 
-
+/* New: Green indicator for new messages */
+.chat-toggle-btn.new-message-indicator {
+  background-color: #4CAF50; /* Green color */
+}
 
 
 .chat-toggle-btn:hover {
   transform: scale(1.1);
   background-color: #e8dc8b;
 }
+
+/* Hover for new message indicator (optional, keep green on hover) */
+.chat-toggle-btn.new-message-indicator:hover {
+  background-color: #45a049; /* Slightly darker green on hover */
+}
+
 
 #chat-icon, #close-icon {
   
@@ -391,6 +400,8 @@
     // Chat functionality
 let chatOpen = false;
 let chatSetupDone = false;
+let lastMessageCount = 0; // Keep track of the number of messages
+
 
 function setupChat() {
     if (chatSetupDone) return;
@@ -411,10 +422,12 @@ chatToggle.addEventListener('click', () => {
     chatToggle.classList.toggle('chat-open');  // <-- move button up/down
     mainContent.classList.toggle('chat-open');
 
+    // Remove new-message-indicator when chat is opened
     if (chatOpen) {
         chatIcon.style.display = 'none';
         closeIcon.style.display = 'block';
         chatInput.focus();
+        chatToggle.classList.remove('new-message-indicator'); // <--- ADD THIS
     } else {
         chatIcon.style.display = 'block';
         closeIcon.style.display = 'none';
@@ -430,6 +443,7 @@ closeIcon.addEventListener('click', (e) => {
     chatToggle.classList.remove('chat-open');  // <-- move toggle back down
     chatIcon.style.display = 'block';
     closeIcon.style.display = 'none';
+    chatToggle.classList.remove('new-message-indicator'); // <--- ADD THIS
 });
 
 
@@ -469,6 +483,15 @@ function sendMessage() {
 
 function updateChatDisplay(messages) {
     const chatMessages = document.getElementById('chat-messages');
+    const chatToggle = document.getElementById('chat-toggle-btn'); // Get the button element
+    
+    // Check for new messages only if the chat is not currently open
+    if (!chatOpen && messages.length > lastMessageCount) {
+        chatToggle.classList.add('new-message-indicator');
+    }
+    lastMessageCount = messages.length; // Update the count of messages
+
+
     chatMessages.innerHTML = ''; // Clear existing messages
 
     messages.forEach(msg => {
@@ -579,6 +602,9 @@ async function sendSystemMessage(message) {
     }
 
     function legalMove(move,lastVal){
+      if (move=='D' && lastVal=='S') {
+        return false
+      }
         //move: 2-10
         //last: L,P,null
         const numMove = parseInt(move);
