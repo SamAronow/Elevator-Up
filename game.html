@@ -602,7 +602,7 @@ async function sendSystemMessage(message) {
     }
 
     function legalMove(move,lastVal){
-      if (move=='D' && lastVal=='S') {
+      if (move=='D' && (lastVal=='S' || lastVal=='L' || lastVal=='P')) {
         return false
       }
         //move: 2-10
