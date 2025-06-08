@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="room.css">
 </head>
 <body>
+  <div id="main-content">
   <div class="container py-5 text-center">
     <h1 class="game-title">Room Lobby</h1>
     <div class="room-code mb-4" id="room-code-display"></div>
@@ -24,22 +25,39 @@
     </div>
   </div>
 
-  <!-- Player Name Input Popup -->
-  <div id="player-name-popup" class="popup-overlay" onclick="cancelNameEntry()">
+  <div id="player-name-popup" class="popup-overlay">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content p-4" onclick="event.stopPropagation()">
-        <div class="modal-header border-0 position-relative">
-          <h2 class="modal-title w-100 text-center" style="color: var(--accent-color); padding-right: 2rem;">Enter your name</h2>
-         <button type="button" class="btn-close btn-close-white position-absolute end-0 me-3" style="top: 0.5rem;" onclick="cancelNameEntry()"></button>
+        <div class="modal-content p-4" onclick="event.stopPropagation()">
+            <div class="modal-header border-0 position-relative">
+                <h2 class="modal-title w-100 text-center" style="color: var(--accent-color);">Enter your name</h2>
+            </div>
+            <div class="modal-body py-4">
+                <input type="text" id="player-name-input" class="form-control form-control-lg mb-4" 
+                       maxlength="20" placeholder="Your name" autocomplete="off" />
+                <button class="btn btn-custom w-100 py-3 submit-btn">Submit</button>
+            </div>
         </div>
-        <div class="modal-body py-4">
-          <input type="text" id="player-name-input" class="form-control form-control-lg mb-4" 
-                 maxlength="20" placeholder="Your name" autocomplete="off" />
-          <button class="btn btn-custom w-100 py-3 submit-btn">Submit</button>
-        </div>
-      </div>
+    </div>
+    </div>
+</div><!-- Chat Container -->
+  <div id="chat-container" class="chat-container">
+    <div class="chat-header">
+      <h5>Game Chat</h5>
+    </div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div class="chat-input">
+      <input type="text" id="chat-input-field" placeholder="Type your message..." class="form-control chat-input-field">
+      <button id="send-chat-btn" class="btn btn-sm btn-custom send-chat-btn">
+        <i class="bi bi-send-fill"></i>
+      </button>
     </div>
   </div>
+  
+  <!-- Chat Toggle Button -->
+  <button id="chat-toggle-btn" class="chat-toggle-btn">
+    <i class="bi bi-chat-dots-fill" id="chat-icon"></i>
+    <i class="bi bi-x-lg" id="close-icon" style="display: none;"></i>
+  </button>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

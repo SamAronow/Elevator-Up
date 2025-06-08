@@ -4,8 +4,19 @@
   <title>Elevator Up</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="database.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">  <script src="database.js"></script>
   <style>
+#main-content {
+  transition: margin-right 0.3s ease;
+}
+
+/* When chat is open, shift game left */
+#main-content.chat-open {
+  margin-right: 350px; /* same width as chat sidebar */
+}
+
+
  body {
   margin: 0;
   padding: 20px;
@@ -142,12 +153,367 @@
   100% { opacity: 0; transform: scale(0.95); }
 }
 
+.chat-toggle-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #f0e68c;
+  color: #1e1e2f;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  cursor: pointer;
+  z-index: 1001;
+  transition: all 0.3s ease;
+}
 
+.chat-toggle-btn.chat-open {
+  bottom: auto;
+  top: 5px;
+  right: 5px; /* tighten the right padding too */
+    width: 36px;
+  height: 36px;
+}
+
+
+
+
+.chat-toggle-btn:hover {
+  transform: scale(1.1);
+  background-color: #e8dc8b;
+}
+
+#chat-icon, #close-icon {
+  
+  transition: opacity 0.2s ease;
+}
+#close-icon {
+  font-size: 1rem; /* smaller X */
+}
+
+
+.chat-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100%;
+  background-color: #1e1e2f;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  display: none;
+  flex-direction: column;
+  z-index: 999;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+}
+
+.chat-container.open {
+  display: flex;
+}
+
+
+.chat-header {
+  padding: 10px 15px; /* less vertical space */
+  background-color: #2b2b3a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: #f0e68c;
+  border-radius: 12px 12px 0 0;
+}
+
+.chat-header h5 {
+  font-size: 1.4rem;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+
+/* Chat Messages */
+.chat-messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  background-color: #1e1e2f;
+}
+
+/* Chat Input */
+.chat-input {
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background-color: #2b2b3a;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.chat-input-field {
+  flex: 1;
+  height: 45px;
+  background-color: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 10px 15px;
+  font-size: 1rem;
+  border-radius: 8px;
+}
+
+.send-chat-btn {
+  background-color: #f0e68c;
+  color: #1e1e2f;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  font-size: 1.1rem;
+  padding: 0;
+}
+
+.send-chat-btn:hover {
+  transform: scale(1.15);
+  background-color: #fff18f;
+}
+
+
+/* Messages */
+.message {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: rgba(255,255,255,0.1);
+  max-width: 80%;
+  color: white;
+}
+
+.message.you {
+  background-color: rgba(240, 230, 140, 0.2);
+  margin-left: auto;
+  border: 1px solid rgba(240, 230, 140, 0.3);
+}
+
+.message.system {
+  color: lightgreen;
+  font-style: italic;
+  background-color: rgba(0, 0, 0, 0.2);
+  margin: 8px auto;
+  text-align: center;
+  max-width: 100%;
+}
+
+.message-time {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.5);
+  margin-top: 3px;
+  display: block;
+}
+
+/* New/Modified CSS for animation */
+/* Add position: relative; to #game-container */
+#game-container {
+  position: relative;
+  /* Add other styles for game-container if needed, e.g., width, height */
+}
+
+#card-popup-container {
+  position: absolute; /* Changed from fixed to absolute */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  display: flex;
+  justify-content: center; /* Center cards horizontally */
+  align-items: center; /* Center cards vertically */
+  gap: 10px; /* Reduced gap for more cards */
+  max-width: 90vw; /* Limit overall width */
+  flex-wrap: wrap; /* Allow cards to wrap to next line if too many */
+}
+
+#card-popup-container .animated-card {
+  width: 120px;
+  height: 180px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  transition: transform 0.2s ease-out; /* Smooth transition for scaling */
+}
+
+/* Keyframes remain the same as they apply to the container */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: scale(0.9) translate(-50%, -50%); }
+  15% { opacity: 1; transform: scale(1) translate(-50%, -50%); }
+  85% { opacity: 1; transform: scale(1) translate(-50%, -50%); }
+  100% { opacity: 0; transform: scale(0.95) translate(-50%, -50%); }
+}
 
 </style>
+<body>
+<div id="chat-container" class="chat-container">
+  <div class="chat-header">
+    <h5>Game Chat</h5>
+  </div>
+  <div id="chat-messages" class="chat-messages"></div>
+  <div class="chat-input">
+    <input type="text" id="chat-input-field" placeholder="Type your message..." class="form-control chat-input-field">
+    <button id="send-chat-btn" class="btn btn-sm btn-custom send-chat-btn">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+</div>
 
+<button id="chat-toggle-btn" class="chat-toggle-btn">
+  <i class="bi bi-chat-dots-fill" id="chat-icon"></i>
+  <i class="bi bi-x-lg" id="close-icon" style="display: none;"></i>
+</button>
+
+<div id="main-content">
+  <div id="game-container">
+    <h1></h1>
+  </div>
+</div>
+
+</body>
   
   <script>
+
+    // Chat functionality
+let chatOpen = false;
+let chatSetupDone = false;
+
+function setupChat() {
+    if (chatSetupDone) return;
+    chatSetupDone = true;
+    
+    const chatToggle = document.getElementById('chat-toggle-btn');
+    const chatContainer = document.getElementById('chat-container');
+    const sendChatBtn = document.getElementById('send-chat-btn');
+    const chatInput = document.getElementById('chat-input-field');
+    const chatIcon = document.getElementById('chat-icon');
+    const closeIcon = document.getElementById('close-icon');
+
+   const mainContent = document.getElementById('main-content');
+
+chatToggle.addEventListener('click', () => {
+    chatOpen = !chatOpen;
+    chatContainer.classList.toggle('open');
+    chatToggle.classList.toggle('chat-open');  // <-- move button up/down
+    mainContent.classList.toggle('chat-open');
+
+    if (chatOpen) {
+        chatIcon.style.display = 'none';
+        closeIcon.style.display = 'block';
+        chatInput.focus();
+    } else {
+        chatIcon.style.display = 'block';
+        closeIcon.style.display = 'none';
+    }
+});
+
+
+closeIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    chatOpen = false;
+    chatContainer.classList.remove('open');
+    mainContent.classList.remove('chat-open');
+    chatToggle.classList.remove('chat-open');  // <-- move toggle back down
+    chatIcon.style.display = 'block';
+    closeIcon.style.display = 'none';
+});
+
+
+
+    sendChatBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Firebase listener for messages
+    firebase.database().ref(`/${code}/chat`).on('value', (snapshot) => {
+        const messages = snapshot.val() || [];
+        updateChatDisplay(messages);
+    });
+}
+
+
+function sendMessage() {
+    const chatInput = document.getElementById('chat-input-field');
+    const message = chatInput.value.trim();
+    if (message === '') return;
+
+    const newMessage = {
+        sender: playerName,
+        text: message,
+        timestamp: Date.now(),
+        type: 'user'
+    };
+
+    firebase.database().ref(`/${code}/chat`).once('value').then((snapshot) => {
+        const currentChat = snapshot.val() || [];
+        const updatedChat = [...currentChat, newMessage];
+        firebase.database().ref(`/${code}/chat`).set(updatedChat);
+        chatInput.value = '';
+    });
+}
+
+function updateChatDisplay(messages) {
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.innerHTML = ''; // Clear existing messages
+
+    messages.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        
+        if (msg.type === 'system') {
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `
+                <span>${msg.text}</span>
+                <span class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+            `;
+        } else {
+            messageDiv.className = msg.sender === playerName ? 'message you' : 'message';
+            messageDiv.innerHTML = `
+                <span class="message-sender">${msg.sender}:</span>
+                <span>${msg.text}</span>
+                <span class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+            `;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+    });
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+window.onload = async function () {
+    await initializeGame();
+    //setupChat(); // sets up chat button and listener
+    
+};
+
+async function sendSystemMessage(message) {
+    const newMessage = {
+        sender: 'System',
+        text: message,
+        timestamp: Date.now(),
+        type: 'system'
+    };
+    
+    const currentChat = await read(`/${code}/chat`) || [];
+    const updatedChat = [...currentChat, newMessage];
+    await firebase.database().ref(`/${code}/chat`).set(updatedChat);
+}
 
     /*get data about game
     ---------------------------------------------------------------------------------------
@@ -353,7 +719,7 @@
             width: 400px;
             color: #1e1e2f;
         ">
-            <h3 style="margin-bottom: 20px; color: #222;">Select 2 Cards For The End of The Game/h3>
+            <h3 style="margin-bottom: 20px; color: #222;">Select 2 Cards For The End of The Game</h3>
             <div id="card-selection" style="display: flex; flex-wrap: wrap; justify-content: center;">
             ${cardButtonsHtml}
             </div>
@@ -372,8 +738,8 @@
         </div>
         `;
 
-        document.body.innerHTML = "";  // Remove any setup messages
-        document.body.appendChild(popup);
+        document.getElementById("game-container").innerHTML = "";  // Remove any setup messages
+        document.getElementById("game-container").appendChild(popup);
 
 
         const buttons = popup.querySelectorAll(".end-select");
@@ -446,7 +812,7 @@
     let delete_game = false;
      let playAgainBtn, deleteBtn;
     let otherPlayerChoices = {}; // e.g., {1: {playAgain: true, deleteGame: false}, ...}
-
+    gameOver=false
     async function winner(win) {
     players = await read(`/${code}/players`);
     const winnerName = win == player ? "You" : players[win]?.Name || "Opponent";
@@ -517,7 +883,7 @@
     winMessageBox.appendChild(buttonContainer);
     winMessageBox.appendChild(statusMessage);
     winpopup.appendChild(winMessageBox);
-    document.body.appendChild(winpopup);
+    document.getElementById("game-container").appendChild(winpopup);
 
     // Attach listeners to all players
     for (let i = 1; i <= numPlayers; i++) {
@@ -609,8 +975,8 @@
 
     in_play_again=false
     async function playAgain(){
+      in_play_again=true
         if (player==1){
-            in_play_again=true
 
             const removePlayerPaths = [];
             for (let i = 1; i <= numPlayers; i++) {
@@ -632,12 +998,13 @@
                 ...removePlayerPaths,
                 write(`/${code}/gameStarted`, false),
                 setUpDatabase(numPlayers, code),
-                write(`/${code}/resetDone`, true),
             ]);
+            await write(`/${code}/resetDone`, true),
             location.reload()
         }
         else {
             firebase.database().ref(`/${code}/resetDone`).on('value', snapshot => {
+              console.log(snapshot.val());
                 if (snapshot.val() === true) {
                     location.reload();
                 }
@@ -657,13 +1024,13 @@
     ---------------------------------------------------------------------------------------
     */
 
-    window.onload = initializeGame;
+
 
     async function checkAllPlayersJoined(){
         players = await read(`/${code}/players`);
         const allPlayersJoined = players && players.every(p => p && p.Used && p.Name);
         if (!allPlayersJoined) {
-            document.body.innerHTML = "<h1>Waiting for other players...</h1>";
+           document.getElementById("game-container").innerHTML = "<h1>Waiting for other players...</h1>";
             return false;
         }
         return true;
@@ -757,7 +1124,7 @@ animRef.on('value', async (snapshot) => {
 `;
 
                 popup.appendChild(messageBox);
-                document.body.appendChild(popup);
+                document.getElementById("game-container").appendChild(popup);
 
                 setTimeout(() => {
                     if (isMyTurn) {
@@ -784,6 +1151,7 @@ animRef.on('value', async (snapshot) => {
                             takeBtn.textContent = "Take Cards";
                             takeBtn.onclick = () => {
                                 //popup.remove();
+                                updateHandButtons(false,card,[],[],[])
                                 takeCards(card);
                             };
                             takeBtn.style.background = "#f0e68c";
@@ -852,30 +1220,49 @@ animRef.on('value', async (snapshot) => {
   return new Promise(resolve => {
     const container = document.createElement("div");
     container.id = "card-popup-container";
-    container.style.position = "fixed";
-    container.style.top = "50%";
-    container.style.left = "50%";
-    container.style.transform = "translate(-50%, -50%)";
-    container.style.zIndex = "9999";
-    container.style.display = "flex";
-    container.style.gap = "20px";
+    // Existing styles in CSS
+    // container.style.position = "fixed";
+    // container.style.top = "50%";
+    // container.style.left = "50%";
+    // container.style.transform = "translate(-50%, -50%)";
+    // container.style.zIndex = "9999";
+    // container.style.display = "flex";
+    // container.style.gap = "20px";
     container.style.animation = "fadeInOut 1.2s ease-in-out forwards";
+
+    // Determine card size dynamically
+    const baseCardWidth = 120;
+    const baseCardHeight = 180;
+    const gap = 10;
+    const maxCardsBeforeShrink = 5; // Adjust this threshold as needed
+
+    let cardWidth = baseCardWidth;
+    let cardHeight = baseCardHeight;
+
+    if (cards.length > maxCardsBeforeShrink) {
+        // Calculate a scale factor to fit more cards, preventing overflow
+        const totalCardWidth = (cards.length * baseCardWidth) + ((cards.length - 1) * gap);
+        const viewportWidth = document.getElementById("game-container").offsetWidth * 0.9; // 90% of game-container width
+        if (totalCardWidth > viewportWidth) {
+            const scaleFactor = viewportWidth / totalCardWidth;
+            cardWidth = baseCardWidth * scaleFactor;
+            cardHeight = baseCardHeight * scaleFactor;
+            container.style.gap = `${gap * scaleFactor}px`; // Scale gap too
+        }
+    }
+
 
     for (i=0; i < cards.length; i++) {
       const card = cards[i];
       const cardImg = document.createElement("div");
-      cardImg.style.width = "120px";
-      cardImg.style.height = "180px";
+      cardImg.className = "animated-card"; // Apply new class
+      cardImg.style.width = `${cardWidth}px`;
+      cardImg.style.height = `${cardHeight}px`;
       cardImg.style.backgroundImage = `url('Card_pics/${card}.png')`;
-      cardImg.style.backgroundSize = "contain";
-      cardImg.style.backgroundRepeat = "no-repeat";
-      cardImg.style.backgroundPosition = "center";
-      cardImg.style.borderRadius = "12px";
-      cardImg.style.boxShadow = "0 8px 24px rgba(0,0,0,0.6)";
       container.appendChild(cardImg);
     }
 
-    document.body.appendChild(container);
+    document.getElementById("game-container").appendChild(container);
 
    // At the end of setTimeout
 setTimeout(() => {
@@ -958,15 +1345,15 @@ for (let i = 1; i <= count; i++) {
     btn.style.cursor = "pointer";
     btn.style.fontWeight = "bold";
     btn.onclick = () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(popup);
+        document.getElementById("game-container").removeChild(overlay);
+        document.getElementById("game-container").removeChild(popup);
         endTurn(card, i, stage);
     };
     btnContainer.appendChild(btn);
 }
 
-document.body.appendChild(overlay);
-document.body.appendChild(popup);
+document.getElementById("game-container").appendChild(overlay);
+document.getElementById("game-container").appendChild(popup);
 
 
     }
@@ -1129,7 +1516,6 @@ document.body.appendChild(popup);
                 myst_cards = [];
             }
             inPlay.push(card)
-            const index = myst_cards.indexOf(card);
             myst_cards.splice(myst_cards.indexOf(card), 1);
             await write(`/${code}/mysts/${player}`, myst_cards)
         }
@@ -1305,7 +1691,7 @@ document.body.appendChild(popup);
         </div>
         <div style="display: flex; flex-direction: column; align-items: center; width: ${maxWidth}px;">
           <div style="font-size: 14px; margin-bottom: 2px; text-align: center; width: 100%;">Mystery</div>
-          <div style="display: flex; align-items: center; justify-content: center;">
+          <div style="display: flex; align-direction: column; align-items: center; justify-content: center;">
             <div class="overlap-container">
               ${m.map(() => `<button class="card-button card-back" disabled></button>`).join("")}
             </div>
@@ -1396,7 +1782,9 @@ const playHTML = `
     startFlashingTitle("Your Turn!");
   }
 
-  document.body.innerHTML = `
+  document.getElementById("game-container").innerHTML = `
+
+
     <div class="section opponent-flex">
       ${opponentHTML.join("")}
     </div>
@@ -1435,11 +1823,16 @@ const playHTML = `
         </div>
 </div>
   `;
+  setupChat(); // Rebind chat listeners
 
   const canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
 
   // Check win conditions
   if (hand.length === 0 && ends.length === 0 && mysts.length === 0) {
+    if (!gameOver){
+      sendSystemMessage(`${playerName} won the game!`);
+    }
+    gameOver=true
     winner(player);
   }
 
@@ -1454,6 +1847,10 @@ const playHTML = `
     if (m === null) m = [];
 
     if (h.length === 0 && e.length === 0 && m.length === 0) {
+      if (!gameOver){
+        sendSystemMessage(`${p.Name} won the game!`);
+      }
+      gameOver=true
       winner(p.id);
     }
   }
@@ -1559,7 +1956,5 @@ if (enabled && !canPlay) {
 
   </script>
 </head>
-<body>
-  <h1></h1>
-</body>
+
 </html>

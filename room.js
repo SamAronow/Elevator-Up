@@ -1,98 +1,109 @@
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomCode = urlParams.get("room");
+// At the top of your script (replace the existing code)
+const urlParams = new URLSearchParams(window.location.search);
+const roomCode = urlParams.get("room");
+//localStorage.removeItem("playerName");
 
-    document.getElementById("room-code-display").textContent = roomCode;
+document.getElementById("room-code-display").textContent = roomCode;
 
-    // Copy link animation (no alert)
-    const copyBtn = document.getElementById("copy-link-btn");
-    copyBtn.onclick = () => {
-      const roomURL = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-      navigator.clipboard.writeText(roomURL).then(() => {
-        copyBtn.innerHTML = '<i class="bi bi-check2 me-2"></i>Copied!';
-        copyBtn.disabled = true;
-        setTimeout(() => {
-          copyBtn.innerHTML = '<i class="bi bi-clipboard me-2"></i>Copy Room Link';
-          copyBtn.disabled = false;
-        }, 1000);
-      });
-    };
+let playerCount = 0;
+let selectedPlayerNum = null;
+let playerName = localStorage.getItem('playerName') || null;
 
-    let playerCount = 0;
-    let selectedPlayerNum = null;
+// Show name popup immediately when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    // Only show popup if we don't have a stored name
+    if (playerName === null) {
+        playerName = await showInitialNamePopup();
+        sendSystemMessage(`${playerName} joined`);
+        if (!playerName) {
+            // If no name provided, redirect back
+            window.location.href = 'index.html';
+            return;
+        }
+        localStorage.setItem('playerName', playerName);
+    }
+    
+    // Then setup the room
     setupRoom();
+    
+    // Check for rejoin scenario
+    await checkRejoinScenario();
+});
 
-    async function setupRoom() {
-      playerCount = await read(`/${roomCode}/playerCount`);
-      const container = document.getElementById("player-buttons");
-      container.innerHTML = "";
+// Copy link animation (no alert)
+const copyBtn = document.getElementById("copy-link-btn");
+copyBtn.onclick = () => {
+  const roomURL = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+  navigator.clipboard.writeText(roomURL).then(() => {
+    copyBtn.innerHTML = '<i class="bi bi-check2 me-2"></i>Copied!';
+    copyBtn.disabled = true;
+    setTimeout(() => {
+      copyBtn.innerHTML = '<i class="bi bi-clipboard me-2"></i>Copy Room Link';
+      copyBtn.disabled = false;
+    }, 1000);
+  });
+};
 
-      for (let i = 1; i <= playerCount; i++) {
-        const btn = document.createElement("button");
-        btn.id = `player${i}-btn`;
-        btn.className = "btn btn-dark-custom btn-lg";
-        btn.innerHTML = `<i class="bi bi-person me-2"></i>Player ${i}`;
-        btn.onclick = () => selectPlayer(i);
-        container.appendChild(btn);
 
-        // Listen for Used status changes and update button accordingly
-        firebase.database().ref(`/${roomCode}/players/${i}/Used`).on("value", snapshot => {
-          if (snapshot.val() === true) disableButton(i);
-          else enableButton(i);
-        });
-      }
-    }
+function showInitialNamePopup() {
+    return new Promise((resolve) => {
+        const popup = document.getElementById("player-name-popup");
+        const input = document.getElementById("player-name-input");
+        const submitBtn = popup.querySelector("button.submit-btn");
+        
+        // Make sure popup is visible
+        popup.style.display = "flex";
+        popup.style.opacity = "1";
+        input.value = "";
+        input.focus();
 
-    function disableButton(playerNum) {
-      const btn = document.getElementById(`player${playerNum}-btn`);
-      if (btn) {
-        btn.disabled = true;
-        btn.classList.add("taken");
-        btn.innerHTML = `<i class="bi bi-person-x me-2"></i>Player ${playerNum} (Taken)`;
-      }
-    }
+        function cleanupAndResolve(name) {
+            submitBtn.removeEventListener("click", onSubmit);
+            input.removeEventListener("keydown", handleKeyDown);
+            popup.style.display = "none";
+            resolve(name);
+        }
 
-    function enableButton(playerNum) {
-      const btn = document.getElementById(`player${playerNum}-btn`);
-      if (btn) {
-        btn.disabled = false;
-        btn.classList.remove("taken");
-        btn.innerHTML = `<i class="bi bi-person me-2"></i>Player ${playerNum}`;
-      }
-    }
+        function onSubmit() {
+            const val = input.value.trim();
+            if (val.length === 0) return;
+            cleanupAndResolve(val);
+        }
 
-    // Add this at the top of your script, before setupRoom()
-window.addEventListener("load", async () => {
-    const choosingPlayer = localStorage.getItem("choosingPlayer");
+        function handleKeyDown(e) {
+            if (e.key === "Enter") {
+                onSubmit();
+            }
+        }
+
+        submitBtn.addEventListener("click", onSubmit);
+        input.addEventListener("keydown", handleKeyDown);
+    });
+}
+
+async function checkRejoinScenario() {
     const inGame = localStorage.getItem("inGame");
     const playerNum = localStorage.getItem("player");
     const urlParams = new URLSearchParams(window.location.search);
     const roomCode = urlParams.get("room");
 
-    // If we're in the middle of choosing a player (name popup was closed)
-    if (!isNaN(parseInt(choosingPlayer)) && choosingPlayer > 0) {
-        selectPlayer(parseInt(choosingPlayer));
-    }
     // If we have a stored game, check if we can rejoin
-    else if (inGame==roomCode && playerNum) {
+    if (inGame === roomCode && playerNum) {
         try {
             const snapshot = await firebase.database().ref(`/${inGame}/players/${playerNum}/Used`).once('value');
-            if (snapshot.exists() && snapshot.val() === true ) {
-                console.log(snapshot.val())
-                console.log(`/${inGame}/players/${playerNum}/Used`);
+            if (snapshot.exists() && snapshot.val() === true) {
                 showRejoinButton(inGame);
             } else {
                 // Clean up if our slot isn't used anymore
                 localStorage.removeItem('inGame');
                 localStorage.removeItem('player');
-                localStorage.removeItem('playerName');
             }
         } catch (error) {
             console.error("Error checking game status:", error);
         }
     }
-});
+}
 
-// Add this function to show the rejoin button at bottom
 function showRejoinButton(roomCode) {
     // Remove existing rejoin button if any
     const existingBtn = document.querySelector('.rejoin-btn-container');
@@ -106,16 +117,13 @@ function showRejoinButton(roomCode) {
         </button>
     `;
     
-    // Insert at bottom of container (before closing </div>)
     const mainContainer = document.querySelector('.container');
     mainContainer.appendChild(rejoinContainer);
     
-    // Add click handler
     document.querySelector('.rejoin-btn').addEventListener('click', async () => {
-        const playerName = localStorage.getItem('playerName');
         const playerNum = localStorage.getItem('player');
         
-        if (!playerName || !playerNum) return;
+        if (!playerNum) return;
         
         try {
             const snapshot = await firebase.database().ref(`/${roomCode}/players/${playerNum}/Used`).once('value');
@@ -125,7 +133,6 @@ function showRejoinButton(roomCode) {
                 rejoinContainer.remove();
                 localStorage.removeItem('inGame');
                 localStorage.removeItem('player');
-                localStorage.removeItem('playerName');
             }
         } catch (error) {
             console.error("Rejoin failed:", error);
@@ -133,85 +140,189 @@ function showRejoinButton(roomCode) {
     });
 }
 
-// Update your selectPlayer function
+async function setupRoom() {
+    playerCount = await read(`/${roomCode}/playerCount`);
+    const container = document.getElementById("player-buttons");
+    container.innerHTML = "";
+
+    for (let i = 1; i <= playerCount; i++) {
+        const btn = document.createElement("button");
+        btn.id = `player${i}-btn`;
+        btn.className = "btn btn-dark-custom btn-lg";
+        btn.innerHTML = `<i class="bi bi-person me-2"></i>Player ${i}`;
+        btn.onclick = () => selectPlayer(i);
+        container.appendChild(btn);
+
+        firebase.database().ref(`/${roomCode}/players/${i}/Used`).on("value", snapshot => {
+            if (snapshot.val() === true) disableButton(i);
+            else enableButton(i);
+        });
+    }
+}
+
+function disableButton(playerNum) {
+    const btn = document.getElementById(`player${playerNum}-btn`);
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add("taken");
+        btn.innerHTML = `<i class="bi bi-person-x me-2"></i>Player ${playerNum} (Taken)`;
+    }
+}
+
+function enableButton(playerNum) {
+    const btn = document.getElementById(`player${playerNum}-btn`);
+    if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("taken");
+        btn.innerHTML = `<i class="bi bi-person me-2"></i>Player ${playerNum}`;
+    }
+}
+
 async function selectPlayer(num) {
     selectedPlayerNum = num;
     await write(`/${roomCode}/players/${num}/Used`, true);
-    localStorage.setItem("choosingPlayer", num);
-    const name = await showNamePopup(num);
-
-    if (!name) {
-        await write(`/${roomCode}/players/${num}/Used`, false);
-        localStorage.removeItem('choosingPlayer');
-        setupRoom();
-        return;
-    }
-
-    localStorage.removeItem('choosingPlayer');
-    await write(`/${roomCode}/players/${num}/Name`, name.trim());
+    await write(`/${roomCode}/players/${num}/Name`, playerName.trim());
+    
+    // Wait for the system message to be sent before redirecting
+    await sendSystemMessage(`${playerName} chose Player ${num}`);
+    
     localStorage.setItem("inGame", roomCode);
     localStorage.setItem("player", num);
-    localStorage.setItem("playerName", name.trim());
-    
+    localStorage.removeItem("playerName");
+
+    // Remove the setTimeout and redirect immediately after message is sent
     window.location.href = `game.html?player=${num}&room=${roomCode}`;
 }
 
+// Chat functionality
+let chatOpen = false;
 
-    function showNamePopup(num) {
-      return new Promise((resolve) => {
-        const popup = document.getElementById("player-name-popup");
-        const input = document.getElementById("player-name-input");
-        const submitBtn = popup.querySelector("button.submit-btn");
+function setupChat() {
+    const chatToggle = document.getElementById('chat-toggle-btn');
+    const chatContainer = document.getElementById('chat-container');
+    const sendChatBtn = document.getElementById('send-chat-btn');
+    const chatInput = document.getElementById('chat-input-field');
+    const chatIcon = document.getElementById('chat-icon');
+    const closeIcon = document.getElementById('close-icon');
+    const mainContent = document.getElementById('main-content');
 
-        popup.style.display = "flex";
-        input.value = "";
-        input.focus();
 
-        function cleanupAndResolve(name) {
-          submitBtn.removeEventListener("click", onSubmit);
-          popup.style.display = "none";
-          resolve(name);
+    // Toggle chat visibility
+    chatToggle.addEventListener('click', () => {
+        chatOpen = !chatOpen;
+        chatContainer.classList.toggle('open', chatOpen);
+  chatToggle.classList.toggle('chat-open'); // this makes it move!
+  mainContent.classList.toggle('chat-open');
+        if (chatOpen) {
+            chatIcon.style.display = 'none';
+            closeIcon.style.display = 'block';
+            chatInput.focus();
+        } else {
+            chatIcon.style.display = 'block';
+            closeIcon.style.display = 'none';
         }
+    });
 
-        function onSubmit() {
-          const val = input.value.trim();
-          if (val.length === 0) return;
-          cleanupAndResolve(val);
-        }
+    // Close icon click handler
+    closeIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatOpen = false;
+        chatContainer.classList.remove('open');
+        chatToggle.classList.remove('chat-open');
+        mainContent.classList.remove('chat-open');
+        chatIcon.style.display = 'block';
+        closeIcon.style.display = 'none';
+    });
 
-        submitBtn.addEventListener("click", onSubmit);
 
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            onSubmit();
-          } else if (e.key === "Escape") {
-            cleanupAndResolve(null);
-          }
+    // Send message handler
+    sendChatBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Initialize Firebase chat listener
+    if (typeof roomCode !== 'undefined') {
+        firebase.database().ref(`/${roomCode}/chat`).on('value', (snapshot) => {
+            const messages = snapshot.val() || [];
+            updateChatDisplay(messages);
         });
-      });
     }
+}
+function sendMessage() {
+    const chatInput = document.getElementById('chat-input-field');
+    const message = chatInput.value.trim();
+    if (message === '') return;
 
-    // Cancel name entry: close popup and re-enable the button
-    async function cancelNameEntry() {
-        localStorage.setItem("choosingPlayer", 0);
-      if (selectedPlayerNum !== null) {
-        await write(`/${roomCode}/players/${selectedPlayerNum}/Used`, false);
-      }
-      closeNamePopup();
+    const newMessage = {
+        sender: playerName,
+        text: message,
+        timestamp: Date.now(),
+        type: 'user' // Add message type
+    };
+
+    if (typeof roomCode !== 'undefined') {
+        firebase.database().ref(`/${roomCode}/chat`).once('value').then((snapshot) => {
+            const currentChat = snapshot.val() || [];
+            const updatedChat = [...currentChat, newMessage];
+            firebase.database().ref(`/${roomCode}/chat`).set(updatedChat);
+            chatInput.value = '';
+        });
     }
-
-    function closeNamePopup() {
-      const popup = document.getElementById("player-name-popup");
-      popup.classList.add("closing");
-      const modalContent = popup.querySelector(".modal-content");
-      if (modalContent) modalContent.classList.add("closing");
-      
-      setTimeout(() => {
-        popup.style.display = "none";
-        popup.classList.remove("closing");
-        if (modalContent) modalContent.classList.remove("closing");
-      }, 300);
-    }
- 
-
+}
+function sendSystemMessage(message) {
+    return new Promise((resolve) => {
+        if (typeof roomCode !== 'undefined') {
+            const newMessage = {
+                sender: 'System',
+                text: message,
+                timestamp: Date.now(),
+                type: 'system'
+            };
             
+            firebase.database().ref(`/${roomCode}/chat`).once('value').then((snapshot) => {
+                const currentChat = snapshot.val() || [];
+                const updatedChat = [...currentChat, newMessage];
+                firebase.database().ref(`/${roomCode}/chat`).set(updatedChat)
+                    .then(() => resolve()); // Resolve when message is fully written
+            });
+        } else {
+            resolve(); // Still resolve if no room code
+        }
+    });
+}
+
+function updateChatDisplay(messages) {
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.innerHTML = ''; // Clear existing messages
+
+    messages.forEach(msg => {
+        const messageDiv = document.createElement('div');
+        
+        if (msg.type === 'system') {
+            // System message styling (green)
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `
+                <span style="color: lightgreen; font-style: italic;">${msg.text}</span>
+                <span class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+            `;
+        } else {
+            // Regular user message
+            messageDiv.className = msg.sender === playerName ? 'message you' : 'message';
+            messageDiv.innerHTML = `
+                <span class="message-sender">${msg.sender}:</span>
+                <span>${msg.text}</span>
+                <span class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</span>
+            `;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+    });
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Initialize chat when DOM is loaded
+document.addEventListener('DOMContentLoaded', setupChat);
+
