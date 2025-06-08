@@ -1,7 +1,7 @@
 // At the top of your script (replace the existing code)
 const urlParams = new URLSearchParams(window.location.search);
 const roomCode = urlParams.get("room");
-localStorage.removeItem("playerName");
+localStorage.removeItem("playerName"); // This might be problematic if you want to remember the name across sessions, but I'll keep it as per your snippet.
 
 document.getElementById("room-code-display").textContent = roomCode;
 
@@ -9,18 +9,24 @@ let playerCount = 0;
 let selectedPlayerNum = null;
 let playerName = localStorage.getItem('playerName') || null;
 
+// New: Variable to track the number of messages for unread indicator
+let lastMessageCount = 0;
+
 // Show name popup immediately when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     // Only show popup if we don't have a stored name
     if (playerName === null) {
         playerName = await showInitialNamePopup();
-        sendSystemMessage(`${playerName} joined`);
         if (!playerName) {
             // If no name provided, redirect back
             window.location.href = 'index.html';
             return;
         }
+        sendSystemMessage(`${playerName} joined`); // Send after player name is confirmed
         localStorage.setItem('playerName', playerName);
+    } else {
+        // If player name exists, send system message on page load
+        sendSystemMessage(`${playerName} rejoined`); // Or "joined" if it's a fresh load with cached name
     }
     
     // Then setup the room
@@ -117,9 +123,13 @@ function showRejoinButton(roomCode) {
         </button>
     `;
     
-    const mainContainer = document.querySelector('.container');
-    mainContainer.appendChild(rejoinContainer);
-    
+    const mainContainer = document.querySelector('.container'); // Assuming your main content container has this class
+    if (mainContainer) {
+        mainContainer.appendChild(rejoinContainer);
+    } else {
+        console.error("Main container not found for rejoin button.");
+    }
+
     document.querySelector('.rejoin-btn').addEventListener('click', async () => {
         const playerNum = localStorage.getItem('player');
         
@@ -188,7 +198,7 @@ async function selectPlayer(num) {
     
     localStorage.setItem("inGame", roomCode);
     localStorage.setItem("player", num);
-    localStorage.removeItem("playerName");
+    localStorage.removeItem("playerName"); // This removes the name so it asks again on next visit
 
     // Remove the setTimeout and redirect immediately after message is sent
     window.location.href = `game.html?player=${num}&room=${roomCode}`;
@@ -204,19 +214,26 @@ function setupChat() {
     const chatInput = document.getElementById('chat-input-field');
     const chatIcon = document.getElementById('chat-icon');
     const closeIcon = document.getElementById('close-icon');
-    const mainContent = document.getElementById('main-content');
+    const mainContent = document.getElementById('main-content'); // Assuming you have a main-content in room.html
 
+    if (!chatToggle || !chatContainer || !sendChatBtn || !chatInput || !chatIcon || !closeIcon || !mainContent) {
+        console.warn("Chat elements not found in room.html. Chat functionality might not work as expected.");
+        return; // Exit if essential elements are missing
+    }
 
     // Toggle chat visibility
     chatToggle.addEventListener('click', () => {
         chatOpen = !chatOpen;
         chatContainer.classList.toggle('open', chatOpen);
-  chatToggle.classList.toggle('chat-open'); // this makes it move!
-  mainContent.classList.toggle('chat-open');
+        chatToggle.classList.toggle('chat-open'); // this makes it move!
+        mainContent.classList.toggle('chat-open');
+
+        // New: Remove new-message-indicator when chat is opened
         if (chatOpen) {
             chatIcon.style.display = 'none';
             closeIcon.style.display = 'block';
             chatInput.focus();
+            chatToggle.classList.remove('new-message-indicator'); // <--- ADD THIS
         } else {
             chatIcon.style.display = 'block';
             closeIcon.style.display = 'none';
@@ -232,6 +249,7 @@ function setupChat() {
         mainContent.classList.remove('chat-open');
         chatIcon.style.display = 'block';
         closeIcon.style.display = 'none';
+        chatToggle.classList.remove('new-message-indicator'); // <--- ADD THIS
     });
 
 
@@ -249,6 +267,7 @@ function setupChat() {
         });
     }
 }
+
 function sendMessage() {
     const chatInput = document.getElementById('chat-input-field');
     const message = chatInput.value.trim();
@@ -270,6 +289,7 @@ function sendMessage() {
         });
     }
 }
+
 function sendSystemMessage(message) {
     return new Promise((resolve) => {
         if (typeof roomCode !== 'undefined') {
@@ -287,13 +307,27 @@ function sendSystemMessage(message) {
                     .then(() => resolve()); // Resolve when message is fully written
             });
         } else {
-            resolve(); // Still resolve if no room code
+            resolve(); // Still resolve if no room code (e.g., if called before roomCode is set)
         }
     });
 }
 
 function updateChatDisplay(messages) {
     const chatMessages = document.getElementById('chat-messages');
+    const chatToggle = document.getElementById('chat-toggle-btn'); // Get the button element
+    
+    if (!chatMessages || !chatToggle) {
+        console.warn("Chat display or toggle elements not found.");
+        return; // Exit if elements are missing
+    }
+
+    // New: Check for new messages only if the chat is not currently open
+    if (!chatOpen && messages.length > lastMessageCount) {
+        chatToggle.classList.add('new-message-indicator');
+    }
+    lastMessageCount = messages.length; // Update the count of messages
+
+
     chatMessages.innerHTML = ''; // Clear existing messages
 
     messages.forEach(msg => {
@@ -325,4 +359,3 @@ function updateChatDisplay(messages) {
 
 // Initialize chat when DOM is loaded
 document.addEventListener('DOMContentLoaded', setupChat);
-
