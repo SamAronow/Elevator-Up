@@ -1,7 +1,7 @@
 // At the top of your script (replace the existing code)
 const urlParams = new URLSearchParams(window.location.search);
 const roomCode = urlParams.get("room");
-//localStorage.removeItem("playerName");
+localStorage.removeItem("playerName");
 
 document.getElementById("room-code-display").textContent = roomCode;
 

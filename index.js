@@ -2,7 +2,6 @@
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
       return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     }
-localStorage.removeItem("playerName");
 
 function formatRoomCode(input) {
     // Remove all spaces and convert to uppercase
