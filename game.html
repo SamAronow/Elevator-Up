@@ -601,8 +601,8 @@ async function sendSystemMessage(message) {
         return cards.slice().sort((a, b) => cardRank[a] - cardRank[b]);
     }
 
-    function legalMove(move,lastVal){
-      if (move=='D' && (lastVal=='S' || lastVal=='L' || lastVal=='P')) {
+    function legalMove(move,lastVal,lastMove){
+      if (move=='D' && (lastMove=='S' || lastMove=='L' || lastMove=='P')) {
         return false
       }
         //move: 2-10
@@ -1080,12 +1080,34 @@ async function sendSystemMessage(message) {
                 write(`/${code}/players/${player}/playAgain`, false);
                 write(`/${code}/players/${player}/deleteGame`, false);
                 await getEnd();
+                let allHands = {};
+                for (let i = 1; i <= numPlayers; i++) {
+                    allHands[i] = await read(`/${code}/hands/${i}`) || [];
+                }
+
+                // Find the player with the lowest value card
+                let minRank = Infinity;
+                let minPlayer = 1;
+                for (let i = 1; i <= numPlayers; i++) {
+                    const hand = allHands[i];
+                    for (const card of hand) {
+                        const rank = cardRank[card];
+                        if (rank !== undefined && rank < minRank) {
+                            minRank = rank;
+                            minPlayer = i;
+                        }
+                    }
+                }
+
+                // Write the player with the lowest card as the turn
+                await write(`/${code}/turn`, minPlayer);
                 await write(`/${code}/resetDone`, false)
             }
 
             // Listen for turn changes
             const turnRef = database.ref(`/${code}/turn`);
             turnRef.on('value',async (snapshot) => {
+              
                 updateGame()
             });
 
@@ -1108,13 +1130,14 @@ animRef.on('value', async (snapshot) => {
             mystRef.on('value', async (snapshot) => {
                 let turn = await read(`/${code}/turn`);
                 let lastVal = await read(`/${code}/lastVal`);
+                let lastMove = await read(`/${code}/lastMove`);
                 var isMyTurn = turn === Number(player);
 
                 let data = snapshot.val();
                 if (!data || !data.played) return;
 
                 let card = data.played;
-                let isLegal = legalMove(card, lastVal);
+                let isLegal = legalMove(card, lastVal,lastMove);
 
                 const oldPopup = document.getElementById("popup");
                 if (oldPopup) oldPopup.remove();
@@ -1177,7 +1200,7 @@ animRef.on('value', async (snapshot) => {
                             takeBtn.textContent = "Take Cards";
                             takeBtn.onclick = () => {
                                 //popup.remove();
-                                updateHandButtons(false,card,[],[],[])
+                                updateHandButtons(false,card,card,[],[],[])
                                 takeCards(card);
                             };
                             takeBtn.style.background = "#f0e68c";
@@ -1453,7 +1476,7 @@ document.getElementById("game-container").appendChild(popup);
             handSection.innerHTML = sortedHand.map(card =>
             `<button class="card-button" data-card="${card}">${card}</button>`
             ).join("");
-            updateHandButtons(false,card,deck,hand,end_cards)
+            updateHandButtons(false,card,card,deck,hand,end_cards)
             animcards = Array(amt).fill(card);
 
              await write(`/${code}/showAnimation`, {
@@ -1505,7 +1528,7 @@ document.getElementById("game-container").appendChild(popup);
             ).join("")}`
 
 
-            updateHandButtons(false,card,deck,hand,end_cards)
+            updateHandButtons(false,card,card,deck,hand,end_cards)
             animcards = Array(amt).fill(card);
 
             await write(`/${code}/showAnimation`, {
@@ -1851,7 +1874,7 @@ const playHTML = `
   `;
   setupChat(); // Rebind chat listeners
 
-  const canPlay = updateHandButtons(isMyTurn, lastVal, deck, hand, ends);
+  const canPlay = updateHandButtons(isMyTurn, lastVal,lastMove, deck, hand, ends);
 
   // Check win conditions
   if (hand.length === 0 && ends.length === 0 && mysts.length === 0) {
@@ -1884,7 +1907,7 @@ const playHTML = `
 
 
 
-    function updateHandButtons(enabled, lastVal, deck, hand, ends) {
+    function updateHandButtons(enabled, lastVal, lastMove,deck, hand, ends) {
     let canPlay = false;
 
     const handButtons = document.querySelectorAll("#hand .card-button");
@@ -1911,7 +1934,7 @@ const playHTML = `
     if (hand.length != 0) {
         handButtons.forEach(btn => {
             const card = btn.dataset.card;
-            const isLegal = legalMove(card, lastVal);
+            const isLegal = legalMove(card, lastVal,lastMove);
             if (enabled && isLegal) {
                 canPlay = true;
             }
@@ -1930,7 +1953,7 @@ const playHTML = `
     } else if (ends.length != 0) {
         endCards.forEach(btn => {
             let card = btn.dataset.card;
-            let isLegal = legalMove(card, lastVal);
+            let isLegal = legalMove(card, lastVal,lastMove);
             if (enabled && isLegal) {
                 canPlay = true;
             }
